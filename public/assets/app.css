@@ -136,8 +136,7 @@ button {
   display: none;
 }
 
-.company-strip__logo,
-.company-strip__stpro {
+.company-strip__logo {
   flex: 0 0 auto;
   max-width: 164px;
   max-height: 44px;
@@ -160,22 +159,8 @@ button {
   width: 116px;
 }
 
-.company-strip__stpro {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  color: #ffffff;
-  font-size: 26px;
-  font-style: italic;
-  font-weight: 800;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-
-.company-strip__stpro span {
-  width: 42px;
-  height: 3px;
-  background: currentColor;
+.company-strip__logo--stpro {
+  width: 168px;
 }
 
 .hero__title {
@@ -876,35 +861,34 @@ select:focus {
   }
 
   .company-strip {
-    flex-wrap: wrap;
-    gap: 10px;
-    row-gap: 8px;
-    padding-bottom: 2px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    align-items: center;
+    justify-items: center;
+    padding: 2px 0;
     overflow: visible;
   }
 
   .company-strip__logo {
+    width: 100%;
     max-height: 38px;
   }
 
   .company-strip__logo--iplana {
-    width: 102px;
+    max-width: 112px;
   }
 
   .company-strip__logo--pro {
-    width: 110px;
+    max-width: 124px;
   }
 
   .company-strip__logo--stalko {
-    width: 98px;
+    max-width: 118px;
   }
 
-  .company-strip__stpro {
-    font-size: 20px;
-  }
-
-  .company-strip__stpro span {
-    width: 32px;
+  .company-strip__logo--stpro {
+    max-width: 148px;
   }
 
   .hero__title strong {
@@ -975,23 +959,19 @@ select:focus {
   }
 
   .company-strip__logo--iplana {
-    width: 92px;
+    max-width: 104px;
   }
 
   .company-strip__logo--pro {
-    width: 98px;
+    max-width: 112px;
   }
 
   .company-strip__logo--stalko {
-    width: 92px;
+    max-width: 108px;
   }
 
-  .company-strip__stpro {
-    font-size: 18px;
-  }
-
-  .company-strip__stpro span {
-    width: 28px;
+  .company-strip__logo--stpro {
+    max-width: 140px;
   }
 
   .search--hero {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "vip-orders-shell-v6";
+const CACHE_NAME = "vip-orders-shell-v8";
 const SHELL_ASSETS = [
   "/",
   "/assets/app.css",
@@ -7,6 +7,7 @@ const SHELL_ASSETS = [
   "/assets/iplana-logo.png",
   "/assets/iplana-pro-logo.png",
   "/assets/stalko-logo.svg",
+  "/assets/stpro-logo.png",
   "/manifest.webmanifest",
   "/icons/icon.png",
   "/icons/icon-32.png",
