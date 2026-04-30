@@ -1,10 +1,12 @@
-const CACHE_NAME = "vip-orders-shell-v2";
+const CACHE_NAME = "vip-orders-shell-v3";
 const SHELL_ASSETS = [
   "/",
   "/assets/app.css",
   "/assets/app.js",
   "/manifest.webmanifest",
-  "/icons/icon.svg",
+  "/icons/icon.png",
+  "/icons/icon-32.png",
+  "/icons/icon-180.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];

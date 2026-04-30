@@ -1,9 +1,15 @@
 .env
+.env.local
+.env copy.example
 .venv/
+**/.venv/
 venv/
+**/venv/
 __pycache__/
+**/__pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.vercel/
 .DS_Store

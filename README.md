@@ -47,6 +47,21 @@ Vercel поддерживает Flask как Python Function. В репозит�
 vercel
 ```
 
+Если Vercel ругается на `.venv`, значит локальное виртуальное окружение попало в деплой. Удалите его из Git и задеплойте заново:
+
+```powershell
+git rm -r --cached .venv
+git commit -m "Remove local virtual environment from deployment"
+git push
+```
+
+Если деплой идет напрямую через Vercel CLI из папки, убедитесь, что `.vercelignore` уже есть в проекте, или временно удалите локальную `.venv` перед деплоем:
+
+```powershell
+Remove-Item -Recurse -Force .venv
+vercel
+```
+
 ## Безопасность
 
 Не публикуйте Bitrix webhook в GitHub. Файл `.env` исключен через `.gitignore`; в репозитории должен оставаться только `.env.example`.
