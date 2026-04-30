@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d4f5c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="VIP Заказы" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>VIP-заказы</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="stylesheet" href="/assets/app.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div class="hero__copy">
+          <p class="eyebrow">Реестр VIP-заказов</p>
+          <h1>Статусы <span class="nowrap">VIP-заказов</span></h1>
+          <p class="hero__lead">Оперативная сводка по проектам, ответственным, заказчикам и стадиям расчета.</p>
+        </div>
+        <div class="hero__panel" aria-live="polite">
+          <span class="hero__label">Обновление</span>
+          <strong id="lastUpdated">загрузка</strong>
+          <button class="icon-button" id="refreshButton" type="button" aria-label="Обновить данные" title="Обновить данные">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12a9 9 0 0 1-15.3 6.4M3 12A9 9 0 0 1 18.3 5.6" />
+              <path d="M21 4v6h-6M3 20v-6h6" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="notice notice--hidden" id="notice" role="status"></section>
+
+      <section class="metrics" aria-label="Сводка">
+        <article class="metric">
+          <span class="metric__label">Всего</span>
+          <strong id="metricTotal">0</strong>
+          <small>активных карточек</small>
+        </article>
+        <article class="metric">
+          <span class="metric__label">Проекты</span>
+          <strong id="metricProjects">0</strong>
+          <small>уникальных номеров</small>
+        </article>
+        <article class="metric">
+          <span class="metric__label">Сегодня</span>
+          <strong id="metricToday">0</strong>
+          <small>обновлений</small>
+        </article>
+      </section>
+
+      <main class="workspace">
+        <section class="toolbar" aria-label="Поиск и фильтры">
+          <label class="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.2-3.2" />
+            </svg>
+            <input id="searchInput" type="search" placeholder="Поиск по проекту, заказчику, предмету или стадии" autocomplete="off" />
+          </label>
+
+          <div class="selects">
+            <label>
+              <span>Ответственный</span>
+              <select id="responsibleFilter">
+                <option value="">Все</option>
+              </select>
+            </label>
+            <label>
+              <span>Стадия</span>
+              <select id="stageFilter">
+                <option value="">Все</option>
+              </select>
+            </label>
+            <label>
+              <span>Сортировка</span>
+              <select id="sortSelect">
+                <option value="updated-desc">Сначала обновленные</option>
+                <option value="project-asc">Проект A-Z</option>
+                <option value="customer-asc">Заказчик A-Z</option>
+                <option value="stage-asc">Стадия A-Z</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="chips" id="stageChips" aria-label="Быстрые фильтры по стадиям"></section>
+
+        <section class="table-shell">
+          <div class="table-topline">
+            <div>
+              <strong id="resultCount">0 заказов</strong>
+              <span id="activeFilters">без фильтров</span>
+            </div>
+            <button class="text-button" id="resetButton" type="button">Сбросить</button>
+          </div>
+
+          <div class="loading" id="loading">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+
+          <div class="empty empty--hidden" id="emptyState">
+            <strong>Ничего не найдено</strong>
+            <p>Измените запрос или сбросьте фильтры.</p>
+          </div>
+
+          <div class="table-wrap" id="tableWrap" hidden>
+            <table>
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Проект</th>
+                  <th>Ответственный</th>
+                  <th>Заказчик</th>
+                  <th>Предмет</th>
+                  <th>Стадия расчета</th>
+                  <th>Обновлено</th>
+                </tr>
+              </thead>
+              <tbody id="ordersBody"></tbody>
+            </table>
+          </div>
+
+          <div class="cards" id="cards" hidden></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>
