@@ -339,6 +339,28 @@ def stage_category_ids_from_items(items: list[dict[str, Any]]) -> set[int]:
     return category_ids
 
 
+def stage_id_variants(stage_id: Any) -> set[str]:
+    raw = str(stage_id or "").strip()
+    if not raw:
+        return set()
+
+    variants = {raw}
+    if ":" in raw:
+        variants.add(raw.rsplit(":", 1)[1])
+    return variants
+
+
+def expanded_stage_ids(stage_ids: set[str]) -> set[str]:
+    expanded: set[str] = set()
+    for stage_id in stage_ids:
+        expanded |= stage_id_variants(stage_id)
+    return expanded
+
+
+def item_matches_stage_ids(item: dict[str, Any], stage_ids: set[str]) -> bool:
+    return bool(stage_id_variants(item.get("stageId")) & expanded_stage_ids(stage_ids))
+
+
 def status_id(status: dict[str, Any]) -> str:
     return str(
         status.get("STATUS_ID")
@@ -388,6 +410,8 @@ def stage_labels(
             name = status_name(status)
             if key and name:
                 labels[key] = name
+                if ":" not in key:
+                    labels[f"DT{entity_type_id}_{category_id}:{key}"] = name
 
     return labels
 
@@ -404,9 +428,10 @@ def resolve_work_stage_ids(labels: dict[str, str]) -> set[str]:
     target_normalized = normalized(target)
     exact = {stage_id for stage_id, label in labels.items() if normalized(label) == target_normalized}
     if exact:
-        return exact
+        return expanded_stage_ids(exact)
 
-    return {stage_id for stage_id, label in labels.items() if target_normalized in normalized(label)}
+    partial = {stage_id for stage_id, label in labels.items() if target_normalized in normalized(label)}
+    return expanded_stage_ids(partial)
 
 
 def format_datetime(value: Any) -> str:
@@ -504,14 +529,14 @@ def build_payload() -> dict[str, Any]:
 
     stage_filter_warning = ""
     if work_stage_name() and not work_stage_ids:
-        bitrix_items = []
+        bitrix_items = all_bitrix_items
         stage_filter_warning = (
             f"Стадия Bitrix «{work_stage_name()}» не найдена. "
-            "Проверьте название стадии или задайте BITRIX_WORK_STAGE_IDS."
+            "Временно показаны все карточки; проверьте название стадии или задайте BITRIX_WORK_STAGE_IDS."
         )
     elif work_stage_ids:
         bitrix_items = [
-            item for item in all_bitrix_items if str(item.get("stageId") or "").strip() in work_stage_ids
+            item for item in all_bitrix_items if item_matches_stage_ids(item, work_stage_ids)
         ]
     else:
         bitrix_items = all_bitrix_items
