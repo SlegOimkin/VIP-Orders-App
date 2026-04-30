@@ -20,7 +20,6 @@
         <div class="hero__copy">
           <p class="eyebrow">Реестр VIP-заказов</p>
           <h1>Статусы <span class="nowrap">VIP-заказов</span></h1>
-          <p class="hero__lead">Оперативная сводка по проектам, ответственным, заказчикам и стадиям расчета.</p>
         </div>
         <div class="hero__panel" aria-live="polite">
           <span class="hero__label">Обновление</span>
@@ -36,68 +35,13 @@
 
       <section class="notice notice--hidden" id="notice" role="status"></section>
 
-      <section class="metrics" aria-label="Сводка">
-        <article class="metric">
-          <span class="metric__label">Всего</span>
-          <strong id="metricTotal">0</strong>
-          <small>активных карточек</small>
-        </article>
-        <article class="metric">
-          <span class="metric__label">Проекты</span>
-          <strong id="metricProjects">0</strong>
-          <small>уникальных номеров</small>
-        </article>
-        <article class="metric">
-          <span class="metric__label">Сегодня</span>
-          <strong id="metricToday">0</strong>
-          <small>обновлений</small>
-        </article>
-      </section>
-
       <main class="workspace">
-        <section class="toolbar" aria-label="Поиск и фильтры">
-          <label class="search">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.2-3.2" />
-            </svg>
-            <input id="searchInput" type="search" placeholder="Поиск по проекту, заказчику, предмету или стадии" autocomplete="off" />
-          </label>
-
-          <div class="selects">
-            <label>
-              <span>Ответственный</span>
-              <select id="responsibleFilter">
-                <option value="">Все</option>
-              </select>
-            </label>
-            <label>
-              <span>Стадия</span>
-              <select id="stageFilter">
-                <option value="">Все</option>
-              </select>
-            </label>
-            <label>
-              <span>Сортировка</span>
-              <select id="sortSelect">
-                <option value="updated-desc">Сначала обновленные</option>
-                <option value="project-asc">Проект A-Z</option>
-                <option value="customer-asc">Заказчик A-Z</option>
-                <option value="stage-asc">Стадия A-Z</option>
-              </select>
-            </label>
-          </div>
-        </section>
-
-        <section class="chips" id="stageChips" aria-label="Быстрые фильтры по стадиям"></section>
-
         <section class="table-shell">
           <div class="table-topline">
             <div>
               <strong id="resultCount">0 заказов</strong>
               <span id="activeFilters">без фильтров</span>
             </div>
-            <button class="text-button" id="resetButton" type="button">Сбросить</button>
           </div>
 
           <div class="loading" id="loading">
@@ -132,6 +76,61 @@
         </section>
       </main>
     </div>
+
+    <div class="filter-backdrop" id="filterBackdrop" hidden></div>
+    <aside class="filter-sheet" id="filterDrawer" aria-labelledby="filterTitle" aria-hidden="true" hidden>
+      <div class="filter-sheet__handle" aria-hidden="true"></div>
+      <div class="filter-sheet__header">
+        <div>
+          <span class="filter-sheet__eyebrow">Параметры отображения</span>
+          <h2 id="filterTitle">Фильтр</h2>
+        </div>
+        <button class="filter-sheet__close" id="filterClose" type="button" aria-label="Скрыть фильтр">×</button>
+      </div>
+
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.2-3.2" />
+        </svg>
+        <input id="searchInput" type="search" placeholder="Поиск по проекту, заказчику, предмету или стадии" autocomplete="off" />
+      </label>
+
+      <div class="selects">
+        <label>
+          <span>Ответственный</span>
+          <select id="responsibleFilter">
+            <option value="">Все</option>
+          </select>
+        </label>
+        <label>
+          <span>Стадия</span>
+          <select id="stageFilter">
+            <option value="">Все</option>
+          </select>
+        </label>
+        <label>
+          <span>Сортировка</span>
+          <select id="sortSelect">
+            <option value="updated-desc">Сначала обновленные</option>
+            <option value="project-asc">Проект A-Z</option>
+            <option value="customer-asc">Заказчик A-Z</option>
+            <option value="stage-asc">Стадия A-Z</option>
+          </select>
+        </label>
+      </div>
+
+      <section class="chips" id="stageChips" aria-label="Быстрые фильтры по стадиям"></section>
+
+      <div class="filter-sheet__actions">
+        <button class="text-button" id="resetButton" type="button">Сбросить</button>
+        <button class="text-button text-button--solid" id="filterApply" type="button">Скрыть</button>
+      </div>
+    </aside>
+
+    <button class="filter-toggle" id="filterToggle" type="button" aria-controls="filterDrawer" aria-expanded="false">
+      Фильтр
+    </button>
 
     <script src="/assets/app.js" defer></script>
   </body>

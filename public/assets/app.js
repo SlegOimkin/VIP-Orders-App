@@ -4,6 +4,7 @@ const state = {
   responsible: "",
   stage: "",
   sort: "updated-desc",
+  filterOpen: false,
 };
 
 const els = {
@@ -23,12 +24,12 @@ const els = {
   activeFilters: document.querySelector("#activeFilters"),
   lastUpdated: document.querySelector("#lastUpdated"),
   notice: document.querySelector("#notice"),
-  metricTotal: document.querySelector("#metricTotal"),
-  metricProjects: document.querySelector("#metricProjects"),
-  metricToday: document.querySelector("#metricToday"),
+  filterDrawer: document.querySelector("#filterDrawer"),
+  filterBackdrop: document.querySelector("#filterBackdrop"),
+  filterToggle: document.querySelector("#filterToggle"),
+  filterClose: document.querySelector("#filterClose"),
+  filterApply: document.querySelector("#filterApply"),
 };
-
-const columnIds = ["project", "responsible", "customer", "subject", "calculationStage"];
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -54,16 +55,19 @@ function pluralOrders(count) {
   return `${count} заказов`;
 }
 
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+
 function formatGeneratedAt(value) {
   if (!value) return "нет данных";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "нет данных";
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return `${pad(date.getDate())}.${pad(date.getMonth() + 1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function activeFilterCount() {
+  return [state.query, state.responsible, state.stage].filter(Boolean).length;
 }
 
 function setLoading(isLoading) {
@@ -87,7 +91,7 @@ async function loadOrders({ refresh = false } = {}) {
     renderAll();
   } catch (error) {
     showNotice(error.message || "Ошибка загрузки данных", true);
-    state.payload = { items: [], stats: {}, filters: { stages: [], responsibles: [] }, generatedAt: new Date().toISOString() };
+    state.payload = { items: [], filters: { stages: [], responsibles: [] }, generatedAt: new Date().toISOString() };
     renderAll();
   } finally {
     setLoading(false);
@@ -106,16 +110,12 @@ function showNotice(message, isError = false) {
 
 function renderAll() {
   const payload = state.payload;
-  const stats = payload?.stats || {};
-
-  els.metricTotal.textContent = stats.total ?? 0;
-  els.metricProjects.textContent = stats.projects ?? 0;
-  els.metricToday.textContent = stats.updatedToday ?? 0;
   els.lastUpdated.textContent = formatGeneratedAt(payload.generatedAt);
 
   showNotice(payload.warning || (payload.demo ? "Включен демонстрационный режим. Добавьте BITRIX_WEBHOOK_URL для живых данных." : ""));
   renderFilters(payload.filters || { stages: [], responsibles: [] });
   renderRows();
+  renderFilterButton();
 }
 
 function renderFilters(filters) {
@@ -168,6 +168,7 @@ function renderRows() {
   const items = filteredItems();
   els.resultCount.textContent = pluralOrders(items.length);
   els.activeFilters.textContent = activeFilterText();
+  renderFilterButton();
 
   if (!items.length) {
     els.tableWrap.hidden = true;
@@ -251,6 +252,42 @@ function resetFilters() {
   renderAll();
 }
 
+function renderFilterButton() {
+  const count = activeFilterCount();
+  const badge = count ? `<span class="filter-toggle__badge">${count}</span>` : "";
+  els.filterToggle.innerHTML = `${state.filterOpen ? "Скрыть фильтр" : "Фильтр"}${badge}`;
+  els.filterToggle.setAttribute("aria-expanded", String(state.filterOpen));
+}
+
+function openFilter() {
+  state.filterOpen = true;
+  els.filterDrawer.hidden = false;
+  els.filterDrawer.setAttribute("aria-hidden", "false");
+  els.filterBackdrop.hidden = false;
+  renderFilterButton();
+  requestAnimationFrame(() => els.filterDrawer.classList.add("filter-sheet--open"));
+  setTimeout(() => els.searchInput.focus({ preventScroll: true }), 160);
+}
+
+function closeFilter() {
+  state.filterOpen = false;
+  els.filterDrawer.classList.remove("filter-sheet--open");
+  els.filterDrawer.setAttribute("aria-hidden", "true");
+  els.filterBackdrop.hidden = true;
+  renderFilterButton();
+  setTimeout(() => {
+    if (!state.filterOpen) els.filterDrawer.hidden = true;
+  }, 260);
+}
+
+function toggleFilter() {
+  if (state.filterOpen) {
+    closeFilter();
+  } else {
+    openFilter();
+  }
+}
+
 function bindEvents() {
   els.refreshButton.addEventListener("click", () => loadOrders({ refresh: true }));
   els.searchInput.addEventListener("input", (event) => {
@@ -271,6 +308,13 @@ function bindEvents() {
     renderRows();
   });
   els.resetButton.addEventListener("click", resetFilters);
+  els.filterToggle.addEventListener("click", toggleFilter);
+  els.filterClose.addEventListener("click", closeFilter);
+  els.filterApply.addEventListener("click", closeFilter);
+  els.filterBackdrop.addEventListener("click", closeFilter);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.filterOpen) closeFilter();
+  });
   els.stageChips.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-stage]");
     if (!button) return;
