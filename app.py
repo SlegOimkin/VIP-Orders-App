@@ -27,6 +27,7 @@ USER_CACHE: dict[str, str] = {}
 
 DEFAULT_PROCESS_TITLE = "Реестр VIP-заказов"
 DEFAULT_WORK_STAGE_NAME = "В работе"
+DEFAULT_WORK_STAGE_IDS = {"DT1158_153:NEW"}
 
 COLUMN_DEFINITIONS = [
     {
@@ -125,7 +126,7 @@ def work_stage_name() -> str:
 def configured_work_stage_ids() -> set[str]:
     raw_value = os.getenv("BITRIX_WORK_STAGE_IDS", "").strip()
     if not raw_value:
-        return set()
+        return DEFAULT_WORK_STAGE_IDS
     return {part.strip() for part in re.split(r"[,;]", raw_value) if part.strip()}
 
 
@@ -419,13 +420,19 @@ def stage_labels(
 def resolve_work_stage_ids(labels: dict[str, str]) -> set[str]:
     configured = configured_work_stage_ids()
     if configured:
-        return configured
+        return expanded_stage_ids(configured)
 
-    target = work_stage_name()
+    return stage_ids_by_name(labels, work_stage_name())
+
+
+def stage_ids_by_name(labels: dict[str, str], target: str) -> set[str]:
     if not target:
         return set()
 
     target_normalized = normalized(target)
+    if not target_normalized:
+        return set()
+
     exact = {stage_id for stage_id, label in labels.items() if normalized(label) == target_normalized}
     if exact:
         return expanded_stage_ids(exact)
@@ -535,9 +542,22 @@ def build_payload() -> dict[str, Any]:
             "Временно показаны все карточки; проверьте название стадии или задайте BITRIX_WORK_STAGE_IDS."
         )
     elif work_stage_ids:
-        bitrix_items = [
-            item for item in all_bitrix_items if item_matches_stage_ids(item, work_stage_ids)
-        ]
+        bitrix_items = [item for item in all_bitrix_items if item_matches_stage_ids(item, work_stage_ids)]
+        if all_bitrix_items and not bitrix_items:
+            name_stage_ids = stage_ids_by_name(stage_name_by_id, work_stage_name())
+            name_filtered_items = [
+                item for item in all_bitrix_items if item_matches_stage_ids(item, name_stage_ids)
+            ]
+            if name_filtered_items:
+                bitrix_items = name_filtered_items
+                work_stage_ids = name_stage_ids
+                stage_filter_warning = "BITRIX_WORK_STAGE_IDS не совпали с карточками; стадия найдена по названию."
+            else:
+                bitrix_items = all_bitrix_items
+                stage_filter_warning = (
+                    f"Фильтр стадии Bitrix «{work_stage_name()}» не совпал с карточками. "
+                    "Временно показаны все карточки; проверьте BITRIX_WORK_STAGE_IDS."
+                )
     else:
         bitrix_items = all_bitrix_items
 
