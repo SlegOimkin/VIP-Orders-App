@@ -75,15 +75,20 @@ button {
 }
 
 .hero {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 25;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(270px, 340px);
-  gap: 24px 36px;
+  grid-template-areas:
+    "logos logos logos"
+    "title search panel";
+  grid-template-columns: minmax(210px, 0.9fr) minmax(340px, 1.35fr) minmax(260px, 330px);
+  gap: 18px 22px;
   align-content: space-between;
-  align-items: end;
-  min-height: 310px;
+  align-items: center;
+  min-height: 174px;
   overflow: hidden;
-  padding: 26px 30px 30px;
+  padding: 18px 30px 24px;
   color: #ffffff;
   background:
     linear-gradient(90deg, rgba(24, 25, 27, 0.94), rgba(33, 35, 38, 0.76) 56%, rgba(70, 91, 136, 0.62)),
@@ -117,6 +122,75 @@ button {
   z-index: 1;
 }
 
+.company-strip {
+  grid-area: logos;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.company-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.company-strip__logo,
+.company-strip__stpro {
+  flex: 0 0 auto;
+  max-width: 164px;
+  max-height: 44px;
+}
+
+.company-strip__logo {
+  object-fit: contain;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.34));
+}
+
+.company-strip__logo--iplana {
+  width: 126px;
+}
+
+.company-strip__logo--pro {
+  width: 138px;
+}
+
+.company-strip__logo--stalko {
+  width: 116px;
+}
+
+.company-strip__stpro {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #ffffff;
+  font-size: 26px;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.company-strip__stpro span {
+  width: 42px;
+  height: 3px;
+  background: currentColor;
+}
+
+.hero__title {
+  grid-area: title;
+}
+
+.hero__title strong {
+  display: block;
+  color: #f1f1ef;
+  font-size: 24px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+/* Deprecated hero lockup kept out of layout for older cached markup. */
 .hero__brandline {
   grid-column: 1 / -1;
   display: flex;
@@ -172,22 +246,23 @@ button {
 }
 
 h1 {
-  max-width: 880px;
+  max-width: 460px;
   margin: 0;
-  font-size: clamp(42px, 6vw, 78px);
+  font-size: clamp(28px, 4vw, 44px);
   font-weight: 800;
-  line-height: 0.93;
+  line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .hero__panel {
+  grid-area: panel;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px 14px;
   align-items: center;
   min-width: 250px;
-  padding: 18px 18px 18px 20px;
+  padding: 16px 18px 16px 20px;
   background: rgba(37, 37, 37, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-left: 4px solid var(--accent);
@@ -541,7 +616,7 @@ th:first-child {
   gap: 10px;
   align-items: center;
   justify-content: center;
-  min-width: 154px;
+  min-width: 228px;
   min-height: 50px;
   padding: 0 20px;
   color: #ffffff;
@@ -671,6 +746,29 @@ th:first-child {
   outline: 0;
 }
 
+.search--hero {
+  grid-area: search;
+  min-height: 54px;
+  color: #ececea;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(12px);
+}
+
+.search--hero:focus-within {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 0 0 3px rgba(233, 65, 65, 0.22);
+}
+
+.search--hero input {
+  color: #ffffff;
+}
+
+.search--hero input::placeholder {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .selects {
   display: grid;
   grid-template-columns: repeat(3, minmax(150px, 1fr));
@@ -738,7 +836,12 @@ select:focus {
 
 @media (max-width: 1050px) {
   .hero {
-    grid-template-columns: 1fr;
+    grid-template-areas:
+      "logos logos"
+      "title panel"
+      "search search";
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 330px);
+    min-height: 214px;
   }
 
   .hero__panel {
@@ -760,30 +863,52 @@ select:focus {
   }
 
   .hero {
-    min-height: 455px;
-    padding: 22px;
+    grid-template-areas:
+      "logos"
+      "title"
+      "search"
+      "panel";
+    grid-template-columns: 1fr;
+    gap: 14px;
+    min-height: 0;
+    padding: 16px;
     box-shadow: 0 12px 35px rgba(26, 28, 30, 0.12);
   }
 
-  .hero__brandline {
-    align-items: flex-start;
+  .company-strip {
+    flex-wrap: wrap;
+    gap: 10px;
+    row-gap: 8px;
+    padding-bottom: 2px;
+    overflow: visible;
   }
 
-  .brand-lockup {
-    display: grid;
-    gap: 8px;
+  .company-strip__logo {
+    max-height: 38px;
   }
 
-  .brand-lockup img {
-    width: 112px;
+  .company-strip__logo--iplana {
+    width: 102px;
   }
 
-  .hero__context {
-    display: none;
+  .company-strip__logo--pro {
+    width: 110px;
   }
 
-  h1 {
-    font-size: clamp(38px, 12vw, 56px);
+  .company-strip__logo--stalko {
+    width: 98px;
+  }
+
+  .company-strip__stpro {
+    font-size: 20px;
+  }
+
+  .company-strip__stpro span {
+    width: 32px;
+  }
+
+  .hero__title strong {
+    font-size: 20px;
   }
 
   .hero__panel {
@@ -846,16 +971,35 @@ select:focus {
   }
 
   .hero {
-    min-height: 430px;
-    padding: 20px;
+    padding: 14px;
   }
 
-  .brand-lockup span {
-    font-size: 12px;
+  .company-strip__logo--iplana {
+    width: 92px;
   }
 
-  h1 {
-    font-size: 38px;
+  .company-strip__logo--pro {
+    width: 98px;
+  }
+
+  .company-strip__logo--stalko {
+    width: 92px;
+  }
+
+  .company-strip__stpro {
+    font-size: 18px;
+  }
+
+  .company-strip__stpro span {
+    width: 28px;
+  }
+
+  .search--hero {
+    min-height: 50px;
+  }
+
+  .filter-toggle {
+    min-width: min(312px, calc(100% - 40px));
   }
 
   .filter-sheet h2 {

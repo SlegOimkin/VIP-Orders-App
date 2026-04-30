@@ -1,7 +1,7 @@
 {
   "name": "VIP-заказы",
   "short_name": "VIP Заказы",
-  "description": "Директорская панель статусов VIP-заказов",
+  "description": "Реестр статусов VIP-заказов",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

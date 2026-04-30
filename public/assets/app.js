@@ -255,7 +255,7 @@ function resetFilters() {
 function renderFilterButton() {
   const count = activeFilterCount();
   const badge = count ? `<span class="filter-toggle__badge">${count}</span>` : "";
-  els.filterToggle.innerHTML = `${state.filterOpen ? "Скрыть фильтр" : "Фильтр"}${badge}`;
+  els.filterToggle.innerHTML = `${state.filterOpen ? "Скрыть параметры" : "Параметры отбора"}${badge}`;
   els.filterToggle.setAttribute("aria-expanded", String(state.filterOpen));
 }
 
@@ -266,7 +266,6 @@ function openFilter() {
   els.filterBackdrop.hidden = false;
   renderFilterButton();
   requestAnimationFrame(() => els.filterDrawer.classList.add("filter-sheet--open"));
-  setTimeout(() => els.searchInput.focus({ preventScroll: true }), 160);
 }
 
 function closeFilter() {
