@@ -500,6 +500,7 @@ th:first-child {
   font-size: 13px;
   font-weight: 900;
   line-height: 1.25;
+  white-space: normal;
 }
 
 .status-pill--neutral {
@@ -552,17 +553,35 @@ th:first-child {
   margin-top: 12px;
 }
 
-.order-card__top {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  justify-content: space-between;
+.order-card__primary,
+.order-card__project {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
 }
 
-.order-card__number {
+.order-card__primary strong {
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.order-card__project .project-link {
+  font-size: 18px;
+}
+
+.order-card__status {
+  min-width: 0;
+}
+
+.order-card__status .status-pill {
+  width: fit-content;
+}
+
+.order-card__label {
   color: var(--muted);
   font-size: 13px;
   font-weight: 900;
+  text-transform: uppercase;
 }
 
 .order-card dl {

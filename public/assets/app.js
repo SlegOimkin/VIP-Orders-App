@@ -212,7 +212,7 @@ function renderTableRow(item, index) {
   </tr>`;
 }
 
-function renderCard(item, index) {
+function renderCard(item) {
   const values = item.values || {};
   const project = escapeHtml(values.project || "Без проекта");
   const projectTitle = item.url
@@ -220,16 +220,19 @@ function renderCard(item, index) {
     : `<span class="project-link">${project}</span>`;
 
   return `<article class="order-card">
-    <div class="order-card__top">
-      <div>
-        <span class="order-card__number">№ ${index + 1}</span>
-        <div>${projectTitle}</div>
-      </div>
+    <div class="order-card__primary">
+      <span class="order-card__label">Заказчик</span>
+      <strong>${escapeHtml(values.customer || "Не указан")}</strong>
+    </div>
+    <div class="order-card__project">
+      <span class="order-card__label">Номер проекта</span>
+      <div>${projectTitle}</div>
+    </div>
+    <div class="order-card__status">
       ${stagePill(values.calculationStage, item.statusTone)}
     </div>
     <dl>
       <dt>Ответственный</dt><dd>${escapeHtml(values.responsible || "Не указан")}</dd>
-      <dt>Заказчик</dt><dd>${escapeHtml(values.customer || "Не указан")}</dd>
       <dt>Предмет</dt><dd>${escapeHtml(values.subject || "Не указан")}</dd>
       <dt>Обновлено</dt><dd class="muted">${escapeHtml(item.updatedLabel || "")}</dd>
     </dl>
