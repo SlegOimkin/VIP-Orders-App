@@ -26,6 +26,7 @@ CACHE: dict[str, Any] = {"expires_at": 0, "payload": None}
 USER_CACHE: dict[str, str] = {}
 
 DEFAULT_PROCESS_TITLE = "Реестр VIP-заказов"
+DEFAULT_WORK_STAGE_NAME = "В работе"
 
 COLUMN_DEFINITIONS = [
     {
@@ -117,6 +118,17 @@ def max_items() -> int:
     return parse_int_env("BITRIX_MAX_ITEMS", 500)
 
 
+def work_stage_name() -> str:
+    return os.getenv("BITRIX_WORK_STAGE_NAME", DEFAULT_WORK_STAGE_NAME).strip()
+
+
+def configured_work_stage_ids() -> set[str]:
+    raw_value = os.getenv("BITRIX_WORK_STAGE_IDS", "").strip()
+    if not raw_value:
+        return set()
+    return {part.strip() for part in re.split(r"[,;]", raw_value) if part.strip()}
+
+
 def require_basic_auth() -> Response | None:
     username = os.getenv("APP_AUTH_USERNAME", "")
     password = os.getenv("APP_AUTH_PASSWORD", "")
@@ -205,6 +217,32 @@ class BitrixClient:
 
         return items[:limit]
 
+    def category_ids(self, entity_type_id: int) -> list[int]:
+        result = self.call("crm.category.list", {"entityTypeId": entity_type_id}) or {}
+        categories = result.get("categories", result if isinstance(result, list) else [])
+
+        ids: list[int] = []
+        for category in categories:
+            value = category.get("id")
+            if value is not None:
+                try:
+                    ids.append(int(value))
+                except (TypeError, ValueError):
+                    continue
+
+        return ids
+
+    def status_list(self, entity_type_id: int, category_id: int) -> list[dict[str, Any]]:
+        entity_id = f"DYNAMIC_{entity_type_id}_STAGE_{category_id}"
+        result = self.call(
+            "crm.status.list",
+            {
+                "filter": {"ENTITY_ID": entity_id},
+                "order": {"SORT": "ASC"},
+            },
+        )
+        return result if isinstance(result, list) else []
+
     def user_name(self, user_id: Any) -> str:
         if user_id in (None, "", []):
             return ""
@@ -290,6 +328,85 @@ def enum_map(meta: dict[str, Any]) -> dict[str, str]:
         if item_id is not None and item_value:
             values[str(item_id)] = str(item_value)
     return values
+
+
+def stage_category_ids_from_items(items: list[dict[str, Any]]) -> set[int]:
+    category_ids: set[int] = set()
+    for item in items:
+        match = re.match(r"^DT\d+_(\d+):", str(item.get("stageId") or ""))
+        if match:
+            category_ids.add(int(match.group(1)))
+    return category_ids
+
+
+def status_id(status: dict[str, Any]) -> str:
+    return str(
+        status.get("STATUS_ID")
+        or status.get("statusId")
+        or status.get("ID")
+        or status.get("id")
+        or ""
+    ).strip()
+
+
+def status_name(status: dict[str, Any]) -> str:
+    return str(
+        status.get("NAME")
+        or status.get("name")
+        or status.get("VALUE")
+        or status.get("value")
+        or status.get("TITLE")
+        or status.get("title")
+        or ""
+    ).strip()
+
+
+def stage_labels(
+    client: BitrixClient,
+    entity_type_id: int,
+    fields: dict[str, dict[str, Any]],
+    items: list[dict[str, Any]],
+) -> dict[str, str]:
+    labels = enum_map(fields.get("stageId", {}))
+    try:
+        category_ids = set(client.category_ids(entity_type_id))
+    except Exception:
+        category_ids = set()
+    category_ids |= stage_category_ids_from_items(items)
+
+    if not category_ids:
+        category_ids.add(0)
+
+    for category_id in sorted(category_ids):
+        try:
+            statuses = client.status_list(entity_type_id, category_id)
+        except Exception:
+            continue
+
+        for status in statuses:
+            key = status_id(status)
+            name = status_name(status)
+            if key and name:
+                labels[key] = name
+
+    return labels
+
+
+def resolve_work_stage_ids(labels: dict[str, str]) -> set[str]:
+    configured = configured_work_stage_ids()
+    if configured:
+        return configured
+
+    target = work_stage_name()
+    if not target:
+        return set()
+
+    target_normalized = normalized(target)
+    exact = {stage_id for stage_id, label in labels.items() if normalized(label) == target_normalized}
+    if exact:
+        return exact
+
+    return {stage_id for stage_id, label in labels.items() if target_normalized in normalized(label)}
 
 
 def format_datetime(value: Any) -> str:
@@ -381,7 +498,23 @@ def build_payload() -> dict[str, Any]:
     entity_type_id = client.discover_entity_type_id()
     fields = client.get_fields(entity_type_id)
     columns = build_columns(fields)
-    bitrix_items = client.list_items(entity_type_id)
+    all_bitrix_items = client.list_items(entity_type_id)
+    stage_name_by_id = stage_labels(client, entity_type_id, fields, all_bitrix_items)
+    work_stage_ids = resolve_work_stage_ids(stage_name_by_id)
+
+    stage_filter_warning = ""
+    if work_stage_name() and not work_stage_ids:
+        bitrix_items = []
+        stage_filter_warning = (
+            f"Стадия Bitrix «{work_stage_name()}» не найдена. "
+            "Проверьте название стадии или задайте BITRIX_WORK_STAGE_IDS."
+        )
+    elif work_stage_ids:
+        bitrix_items = [
+            item for item in all_bitrix_items if str(item.get("stageId") or "").strip() in work_stage_ids
+        ]
+    else:
+        bitrix_items = all_bitrix_items
 
     items = []
     for index, item in enumerate(bitrix_items, start=1):
@@ -396,11 +529,14 @@ def build_payload() -> dict[str, Any]:
 
         updated_raw = item.get("updatedTime") or item.get("createdTime")
         calculation_stage = values.get("calculationStage", "")
+        process_stage_id = str(item.get("stageId") or "").strip()
         items.append(
             {
                 "rowNumber": index,
                 "id": item.get("id"),
                 "url": item_url(client.portal_url, entity_type_id, item),
+                "processStageId": process_stage_id,
+                "processStage": stage_name_by_id.get(process_stage_id, process_stage_id),
                 "updatedTime": iso_datetime(updated_raw),
                 "updatedLabel": format_datetime(updated_raw),
                 "statusTone": status_tone(calculation_stage),
@@ -415,8 +551,13 @@ def build_payload() -> dict[str, Any]:
         entity_type_id=entity_type_id,
         portal_url=client.portal_url,
         fields=fields,
-        warning="",
+        warning=stage_filter_warning,
         demo=False,
+        stage_filter={
+            "name": work_stage_name(),
+            "ids": sorted(work_stage_ids),
+            "available": stage_name_by_id,
+        },
     )
 
 
@@ -429,6 +570,7 @@ def response_payload(
     fields: dict[str, dict[str, Any]],
     warning: str,
     demo: bool,
+    stage_filter: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     stage_counter = Counter(item["values"].get("calculationStage") or "Без стадии" for item in items)
     responsible_counter = Counter(item["values"].get("responsible") or "Без ответственного" for item in items)
@@ -456,6 +598,7 @@ def response_payload(
         "diagnostics": {
             "mappedFields": {column["id"]: column.get("field") for column in columns},
             "fieldTitles": {key: value.get("title") for key, value in fields.items() if key in {c.get("field") for c in columns}},
+            "stageFilter": stage_filter or {},
         },
     }
 
@@ -495,6 +638,8 @@ def demo_payload(warning: str) -> dict[str, Any]:
                 "rowNumber": index,
                 "id": index,
                 "url": "",
+                "processStageId": "demo-work",
+                "processStage": work_stage_name() or DEFAULT_WORK_STAGE_NAME,
                 "updatedTime": now,
                 "updatedLabel": datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "statusTone": status_tone(values["calculationStage"]),
@@ -511,6 +656,7 @@ def demo_payload(warning: str) -> dict[str, Any]:
         fields=fields,
         warning=warning,
         demo=True,
+        stage_filter={"name": work_stage_name(), "ids": ["demo-work"], "available": {"demo-work": work_stage_name()}},
     )
 
 
