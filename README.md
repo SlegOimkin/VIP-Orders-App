@@ -1,0 +1,52 @@
+# VIP Orders Dashboard
+
+Python/Flask-приложение для директорского просмотра смарт-процесса Bitrix24 `Реестр VIP-Заказов`.
+
+## Возможности
+
+- живая загрузка данных из Bitrix24 REST;
+- автообнаружение смарт-процесса по названию или фиксированный `BITRIX_ENTITY_TYPE_ID=1158`;
+- таблица для ПК и карточки для телефона;
+- поиск, фильтр по ответственному, фильтр по стадии, быстрые stage-чипы;
+- PWA-манифест и service worker для установки на телефон;
+- опциональная Basic Auth защита.
+
+## Локальный запуск
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+Заполните `BITRIX_WEBHOOK_URL` в `.env`, затем:
+
+```powershell
+python app.py
+```
+
+Приложение откроется на `http://localhost:5000`.
+
+## Vercel
+
+Vercel поддерживает Flask как Python Function. В репозиторий нужно загрузить эти файлы, а секреты добавить в Project Settings -> Environment Variables:
+
+- `BITRIX_WEBHOOK_URL`
+- `BITRIX_ENTITY_TYPE_ID=1158`
+- `VIP_FIELD_PROJECT=ufCrm105_1777364307`
+- `VIP_FIELD_RESPONSIBLE=ufCrm105_1777364333`
+- `VIP_FIELD_CUSTOMER=ufCrm105_1777364351`
+- `VIP_FIELD_SUBJECT=ufCrm105_1777364362`
+- `VIP_FIELD_CALCULATION_STAGE=ufCrm105_1777364374`
+- `APP_AUTH_USERNAME` и `APP_AUTH_PASSWORD`, если нужна защита входа
+
+Для деплоя через CLI:
+
+```powershell
+vercel
+```
+
+## Безопасность
+
+Не публикуйте Bitrix webhook в GitHub. Файл `.env` исключен через `.gitignore`; в репозитории должен оставаться только `.env.example`.
