@@ -200,10 +200,11 @@ function renderTableRow(item, index) {
   const projectCell = item.url
     ? `<a class="project-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${project}</a>`
     : `<span class="project-link">${project}</span>`;
+  const rowClass = item.isCompleted ? "order-row order-row--completed" : "order-row";
 
-  return `<tr>
+  return `<tr class="${rowClass}">
     <td>${index + 1}</td>
-    <td>${projectCell}</td>
+    <td><div class="project-stack">${projectCell}${completionBadge(item)}</div></td>
     <td>${escapeHtml(values.responsible || "Не указан")}</td>
     <td>${escapeHtml(values.customer || "Не указан")}</td>
     <td>${escapeHtml(values.subject || "Не указан")}</td>
@@ -218,11 +219,13 @@ function renderCard(item) {
   const projectTitle = item.url
     ? `<a class="project-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${project}</a>`
     : `<span class="project-link">${project}</span>`;
+  const cardClass = item.isCompleted ? "order-card order-card--completed" : "order-card";
 
-  return `<article class="order-card">
+  return `<article class="${cardClass}">
     <div class="order-card__primary">
       <span class="order-card__label">Заказчик</span>
       <strong>${escapeHtml(values.customer || "Не указан")}</strong>
+      ${completionBadge(item)}
     </div>
     <div class="order-card__project">
       <span class="order-card__label">Номер проекта</span>
@@ -241,6 +244,11 @@ function renderCard(item) {
 
 function stagePill(value, tone = "neutral") {
   return `<span class="status-pill status-pill--${escapeHtml(tone || "neutral")}">${escapeHtml(value || "Без стадии")}</span>`;
+}
+
+function completionBadge(item) {
+  if (!item.isCompleted) return "";
+  return `<span class="process-badge process-badge--completed">Завершена</span>`;
 }
 
 function resetFilters() {

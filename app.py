@@ -5,7 +5,7 @@ import os
 import re
 import time
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -28,6 +28,9 @@ USER_CACHE: dict[str, str] = {}
 DEFAULT_PROCESS_TITLE = "Реестр VIP-заказов"
 DEFAULT_WORK_STAGE_NAME = "В работе"
 DEFAULT_WORK_STAGE_IDS = {"DT1158_153:NEW"}
+DEFAULT_COMPLETED_STAGE_NAME = "Завершенные"
+DEFAULT_COMPLETED_STAGE_IDS = {"DT1158_153:PREPARATION"}
+DEFAULT_COMPLETED_VISIBLE_DAYS = 7
 
 COLUMN_DEFINITIONS = [
     {
@@ -123,10 +126,25 @@ def work_stage_name() -> str:
     return os.getenv("BITRIX_WORK_STAGE_NAME", DEFAULT_WORK_STAGE_NAME).strip()
 
 
+def completed_stage_name() -> str:
+    return os.getenv("BITRIX_COMPLETED_STAGE_NAME", DEFAULT_COMPLETED_STAGE_NAME).strip()
+
+
+def completed_visible_days() -> int:
+    return parse_int_env("BITRIX_COMPLETED_VISIBLE_DAYS", DEFAULT_COMPLETED_VISIBLE_DAYS)
+
+
 def configured_work_stage_ids() -> set[str]:
     raw_value = os.getenv("BITRIX_WORK_STAGE_IDS", "").strip()
     if not raw_value:
         return DEFAULT_WORK_STAGE_IDS
+    return {part.strip() for part in re.split(r"[,;]", raw_value) if part.strip()}
+
+
+def configured_completed_stage_ids() -> set[str]:
+    raw_value = os.getenv("BITRIX_COMPLETED_STAGE_IDS", "").strip()
+    if not raw_value:
+        return DEFAULT_COMPLETED_STAGE_IDS
     return {part.strip() for part in re.split(r"[,;]", raw_value) if part.strip()}
 
 
@@ -425,6 +443,14 @@ def resolve_work_stage_ids(labels: dict[str, str]) -> set[str]:
     return stage_ids_by_name(labels, work_stage_name())
 
 
+def resolve_completed_stage_ids(labels: dict[str, str]) -> set[str]:
+    configured = configured_completed_stage_ids()
+    if configured:
+        return expanded_stage_ids(configured)
+
+    return stage_ids_by_name(labels, completed_stage_name())
+
+
 def stage_ids_by_name(labels: dict[str, str], target: str) -> set[str]:
     if not target:
         return set()
@@ -460,6 +486,49 @@ def iso_datetime(value: Any) -> str:
         return datetime.fromisoformat(text.replace("Z", "+00:00")).isoformat()
     except ValueError:
         return text
+
+
+def parse_datetime_value(value: Any) -> datetime | None:
+    if not value:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def completed_reference_time(item: dict[str, Any]) -> Any:
+    return item.get("movedTime") or item.get("updatedTime") or item.get("createdTime")
+
+
+def completed_visible_until(item: dict[str, Any]) -> datetime | None:
+    changed_at = parse_datetime_value(completed_reference_time(item))
+    if not changed_at:
+        return None
+    return changed_at + timedelta(days=completed_visible_days())
+
+
+def is_recent_completed_item(item: dict[str, Any], completed_stage_ids: set[str]) -> bool:
+    if not item_matches_stage_ids(item, completed_stage_ids):
+        return False
+
+    visible_until = completed_visible_until(item)
+    if not visible_until:
+        return False
+
+    return datetime.now(timezone.utc) <= visible_until.astimezone(timezone.utc)
+
+
+def item_sort_time(item: dict[str, Any]) -> datetime:
+    return (
+        parse_datetime_value(item.get("updatedTime") or item.get("createdTime"))
+        or datetime.min.replace(tzinfo=timezone.utc)
+    )
 
 
 def display_scalar(value: Any) -> str:
@@ -533,6 +602,7 @@ def build_payload() -> dict[str, Any]:
     all_bitrix_items = client.list_items(entity_type_id)
     stage_name_by_id = stage_labels(client, entity_type_id, fields, all_bitrix_items)
     work_stage_ids = resolve_work_stage_ids(stage_name_by_id)
+    completed_stage_ids = resolve_completed_stage_ids(stage_name_by_id)
 
     stage_filter_warning = ""
     if work_stage_name() and not work_stage_ids:
@@ -561,6 +631,15 @@ def build_payload() -> dict[str, Any]:
     else:
         bitrix_items = all_bitrix_items
 
+    recent_completed_items = [
+        item for item in all_bitrix_items if is_recent_completed_item(item, completed_stage_ids)
+    ]
+    known_item_ids = {str(item.get("id")) for item in bitrix_items}
+    bitrix_items.extend(
+        item for item in recent_completed_items if str(item.get("id")) not in known_item_ids
+    )
+    bitrix_items.sort(key=item_sort_time, reverse=True)
+
     items = []
     for index, item in enumerate(bitrix_items, start=1):
         values = {}
@@ -575,6 +654,8 @@ def build_payload() -> dict[str, Any]:
         updated_raw = item.get("updatedTime") or item.get("createdTime")
         calculation_stage = values.get("calculationStage", "")
         process_stage_id = str(item.get("stageId") or "").strip()
+        is_completed = item_matches_stage_ids(item, completed_stage_ids)
+        completed_until = completed_visible_until(item) if is_completed else None
         items.append(
             {
                 "rowNumber": index,
@@ -582,6 +663,10 @@ def build_payload() -> dict[str, Any]:
                 "url": item_url(client.portal_url, entity_type_id, item),
                 "processStageId": process_stage_id,
                 "processStage": stage_name_by_id.get(process_stage_id, process_stage_id),
+                "processStageTone": "completed" if is_completed else "active",
+                "isCompleted": is_completed,
+                "completedSince": iso_datetime(completed_reference_time(item)) if is_completed else "",
+                "completedVisibleUntil": completed_until.isoformat() if completed_until else "",
                 "updatedTime": iso_datetime(updated_raw),
                 "updatedLabel": format_datetime(updated_raw),
                 "statusTone": status_tone(calculation_stage),
@@ -601,6 +686,9 @@ def build_payload() -> dict[str, Any]:
         stage_filter={
             "name": work_stage_name(),
             "ids": sorted(work_stage_ids),
+            "completedName": completed_stage_name(),
+            "completedIds": sorted(completed_stage_ids),
+            "completedVisibleDays": completed_visible_days(),
             "available": stage_name_by_id,
         },
     )
@@ -678,13 +766,19 @@ def demo_payload(warning: str) -> dict[str, Any]:
     items = []
     for index, row in enumerate(rows, start=1):
         values = dict(zip([column["id"] for column in columns], row, strict=True))
+        is_completed = index == len(rows)
+        completed_until = datetime.now(timezone.utc) + timedelta(days=completed_visible_days())
         items.append(
             {
                 "rowNumber": index,
                 "id": index,
                 "url": "",
-                "processStageId": "demo-work",
-                "processStage": work_stage_name() or DEFAULT_WORK_STAGE_NAME,
+                "processStageId": "demo-completed" if is_completed else "demo-work",
+                "processStage": completed_stage_name() if is_completed else work_stage_name() or DEFAULT_WORK_STAGE_NAME,
+                "processStageTone": "completed" if is_completed else "active",
+                "isCompleted": is_completed,
+                "completedSince": now if is_completed else "",
+                "completedVisibleUntil": completed_until.isoformat() if is_completed else "",
                 "updatedTime": now,
                 "updatedLabel": datetime.now().strftime("%d.%m.%Y %H:%M"),
                 "statusTone": status_tone(values["calculationStage"]),
@@ -701,7 +795,17 @@ def demo_payload(warning: str) -> dict[str, Any]:
         fields=fields,
         warning=warning,
         demo=True,
-        stage_filter={"name": work_stage_name(), "ids": ["demo-work"], "available": {"demo-work": work_stage_name()}},
+        stage_filter={
+            "name": work_stage_name(),
+            "ids": ["demo-work"],
+            "completedName": completed_stage_name(),
+            "completedIds": ["demo-completed"],
+            "completedVisibleDays": completed_visible_days(),
+            "available": {
+                "demo-work": work_stage_name(),
+                "demo-completed": completed_stage_name(),
+            },
+        },
     )
 
 

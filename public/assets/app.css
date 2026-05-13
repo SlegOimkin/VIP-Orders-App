@@ -490,6 +490,35 @@ th:first-child {
   text-decoration: underline;
 }
 
+.project-stack {
+  display: grid;
+  gap: 6px;
+  align-items: start;
+}
+
+.process-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.process-badge--completed {
+  color: #ffffff;
+  background: var(--success);
+  border-color: #1f664f;
+}
+
+.order-row--completed {
+  background: #f6fbf8;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -547,6 +576,11 @@ th:first-child {
   border: 1px solid var(--line);
   border-left: 4px solid var(--accent);
   border-radius: var(--radius);
+}
+
+.order-card--completed {
+  background: linear-gradient(180deg, #f8fffb, #ffffff);
+  border-left-color: var(--success);
 }
 
 .order-card + .order-card {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "vip-orders-shell-v10";
+const CACHE_NAME = "vip-orders-shell-v11";
 const SHELL_ASSETS = [
   "/",
   "/assets/app.css",

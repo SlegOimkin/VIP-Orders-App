@@ -36,6 +36,9 @@ Vercel поддерживает Flask как Python Function. В репозит�
 - `BITRIX_ENTITY_TYPE_ID=1158`
 - `BITRIX_WORK_STAGE_NAME=В работе`
 - `BITRIX_WORK_STAGE_IDS=DT1158_153:NEW`
+- `BITRIX_COMPLETED_STAGE_NAME=Завершенные`
+- `BITRIX_COMPLETED_STAGE_IDS=DT1158_153:PREPARATION`
+- `BITRIX_COMPLETED_VISIBLE_DAYS=7`
 - `VIP_FIELD_PROJECT=ufCrm105_1777364307`
 - `VIP_FIELD_RESPONSIBLE=ufCrm105_1777364333`
 - `VIP_FIELD_CUSTOMER=ufCrm105_1777364351`
@@ -43,9 +46,10 @@ Vercel поддерживает Flask как Python Function. В репозит�
 - `VIP_FIELD_CALCULATION_STAGE=ufCrm105_1777364374`
 - `APP_AUTH_USERNAME` и `APP_AUTH_PASSWORD`, если нужна защита входа
 
-По умолчанию панель показывает только карточки из стадии смарт-процесса `В работе`.
-Если в Bitrix стадия переименована или нужно закрепить внутренние ID стадий, задайте
-`BITRIX_WORK_STAGE_NAME` или `BITRIX_WORK_STAGE_IDS` в переменных окружения Vercel.
+По умолчанию панель показывает карточки из стадии смарт-процесса `В работе`.
+Карточки из стадии `Завершенные` остаются в панели еще 7 дней после изменения стадии
+и помечаются меткой `Завершена`. Если в Bitrix стадии переименованы или нужно закрепить
+внутренние ID стадий, задайте соответствующие `BITRIX_*_STAGE_*` переменные в Vercel.
 
 Для деплоя через CLI:
 
