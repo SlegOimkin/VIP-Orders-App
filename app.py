@@ -70,6 +70,14 @@ COLUMN_DEFINITIONS = [
     },
 ]
 
+COMMENT_FIELD_DEFINITION = {
+    "id": "comment",
+    "label": "Комментарий",
+    "env": "VIP_FIELD_COMMENT",
+    "candidates": ["комментарий", "комментарии", "comment", "note"],
+    "fallbacks": [],
+}
+
 STAGE_DATE_DEFINITIONS = [
     {
         "id": "taskReceived",
@@ -791,6 +799,8 @@ def build_payload() -> dict[str, Any]:
     entity_type_id = client.discover_entity_type_id()
     fields = client.get_fields(entity_type_id)
     columns = build_columns(fields)
+    comment_field = select_field(fields, COMMENT_FIELD_DEFINITION)
+    comment_meta = fields.get(comment_field or "", {})
     calculation_stage_field = next((column.get("field") for column in columns if column["id"] == "calculationStage"), None)
     calculation_stage_meta = fields.get(calculation_stage_field or "", {})
     stage_date_fields = sort_stage_date_fields(build_stage_date_fields(fields), calculation_stage_meta)
@@ -846,6 +856,7 @@ def build_payload() -> dict[str, Any]:
             raw_values[column["id"]] = raw_value
             values[column["id"]] = display_value(client, raw_value, meta, field_key)
 
+        comment_raw = item.get(comment_field) if comment_field else ""
         updated_raw = item.get("updatedTime") or item.get("createdTime")
         calculation_stage = values.get("calculationStage", "")
         calculation_stage_raw = raw_values.get("calculationStage")
@@ -866,6 +877,7 @@ def build_payload() -> dict[str, Any]:
                 "updatedTime": iso_datetime(updated_raw),
                 "updatedLabel": format_datetime(updated_raw),
                 "statusTone": status_tone(calculation_stage),
+                "comment": display_value(client, comment_raw, comment_meta, comment_field),
                 "values": values,
                 "rawValues": raw_values,
                 "stageDates": build_item_stage_dates(
@@ -885,6 +897,7 @@ def build_payload() -> dict[str, Any]:
         portal_url=client.portal_url,
         fields=fields,
         stage_date_fields=stage_date_fields,
+        comment_field=comment_field,
         warning=stage_filter_warning,
         demo=False,
         stage_filter={
@@ -909,6 +922,7 @@ def response_payload(
     demo: bool,
     stage_filter: dict[str, Any] | None = None,
     stage_date_fields: list[dict[str, Any]] | None = None,
+    comment_field: str | None = None,
 ) -> dict[str, Any]:
     stage_counter = Counter(item["values"].get("calculationStage") or "Без стадии" for item in items)
     responsible_counter = Counter(item["values"].get("responsible") or "Без ответственного" for item in items)
@@ -935,6 +949,7 @@ def response_payload(
         },
         "diagnostics": {
             "mappedFields": {column["id"]: column.get("field") for column in columns},
+            "commentField": comment_field,
             "stageDateFields": {
                 field["id"]: field.get("field")
                 for field in stage_date_fields or []
@@ -961,6 +976,7 @@ def demo_payload(warning: str) -> dict[str, Any]:
         "customer": {"title": "Заказчик", "type": "string"},
         "subject": {"title": "Предмет", "type": "string"},
         "calculationStage": {"title": "Стадия расчета", "type": "string"},
+        "comment": {"title": "Комментарий", "type": "string"},
     }
     for definition in STAGE_DATE_DEFINITIONS:
         fields[definition["id"]] = {"title": definition["label"], "type": "date"}
@@ -973,14 +989,26 @@ def demo_payload(warning: str) -> dict[str, Any]:
     stage_date_fields = build_stage_date_fields(fields)
     now = datetime.now(timezone.utc).isoformat()
     rows = [
-        ("1017-2025", "Лукьянцева М.А.", "Нагасова Н.", "Замена уплотнителя", "Заказ материалов"),
-        ("1024-2025", "Смирнов И.П.", "Давыдова А.", "Нестандартные створки", "Выполнение расчета"),
-        ("1031-2025", "Кузнецова Е.", "Петров В.", "Входная группа", "Согласование с заказчиком"),
+        (
+            "1017-2025",
+            "Лукьянцева М.А.",
+            "Нагасова Н.",
+            "Замена уплотнителя",
+            "Заказ материалов",
+            "Согласовать дату доставки с заказчиком.",
+        ),
+        ("1024-2025", "Смирнов И.П.", "Давыдова А.", "Нестандартные створки", "Выполнение расчета", ""),
+        ("1031-2025", "Кузнецова Е.", "Петров В.", "Входная группа", "Согласование с заказчиком", ""),
     ]
     items = []
     for index, row in enumerate(rows, start=1):
-        values = dict(zip([column["id"] for column in columns], row, strict=True))
-        current_stage_index = stage_index_for_item(stage_date_fields, values["calculationStage"], values["calculationStage"])
+        column_values = dict(zip([column["id"] for column in columns], row[: len(columns)], strict=True))
+        comment = row[-1]
+        current_stage_index = stage_index_for_item(
+            stage_date_fields,
+            column_values["calculationStage"],
+            column_values["calculationStage"],
+        )
         item_stage_date_values = {}
         for stage_index, stage_field in enumerate(stage_date_fields):
             if current_stage_index is not None and stage_index < current_stage_index:
@@ -1002,15 +1030,16 @@ def demo_payload(warning: str) -> dict[str, Any]:
                 "completedVisibleUntil": completed_until.isoformat() if is_completed else "",
                 "updatedTime": now,
                 "updatedLabel": datetime.now().strftime("%d.%m.%Y %H:%M"),
-                "statusTone": status_tone(values["calculationStage"]),
-                "values": values,
-                "rawValues": values,
+                "statusTone": status_tone(column_values["calculationStage"]),
+                "comment": comment,
+                "values": column_values,
+                "rawValues": column_values,
                 "stageDates": build_item_stage_dates(
                     item_stage_date_values,
                     fields,
                     stage_date_fields,
-                    values["calculationStage"],
-                    values["calculationStage"],
+                    column_values["calculationStage"],
+                    column_values["calculationStage"],
                 ),
             }
         )
@@ -1035,6 +1064,7 @@ def demo_payload(warning: str) -> dict[str, Any]:
             },
         },
         stage_date_fields=stage_date_fields,
+        comment_field="comment",
     )
 
 

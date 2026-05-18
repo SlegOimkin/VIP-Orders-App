@@ -44,6 +44,7 @@ Vercel поддерживает Flask как Python Function. В репозит�
 - `VIP_FIELD_CUSTOMER=ufCrm105_1777364351`
 - `VIP_FIELD_SUBJECT=ufCrm105_1777364362`
 - `VIP_FIELD_CALCULATION_STAGE=ufCrm105_1777364374`
+- `VIP_FIELD_COMMENT=ufCrm105_1778845145`
 - `APP_AUTH_USERNAME` и `APP_AUTH_PASSWORD`, если нужна защита входа
 
 По умолчанию панель показывает карточки из стадии смарт-процесса `В работе`.
