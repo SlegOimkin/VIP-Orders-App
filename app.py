@@ -70,6 +70,65 @@ COLUMN_DEFINITIONS = [
     },
 ]
 
+STAGE_DATE_DEFINITIONS = [
+    {
+        "id": "taskReceived",
+        "label": "Поступила задача",
+        "env": "VIP_STAGE_DATE_TASK_RECEIVED",
+        "candidates": ["дата поступления задачи", "поступила задача"],
+        "fallbacks": [],
+    },
+    {
+        "id": "measurement",
+        "label": "Замер",
+        "env": "VIP_STAGE_DATE_MEASUREMENT",
+        "candidates": ["дата замера", "замер"],
+        "fallbacks": [],
+    },
+    {
+        "id": "calculation",
+        "label": "Выполнение расчета",
+        "env": "VIP_STAGE_DATE_CALCULATION",
+        "candidates": ["дата выполнения расчета", "выполнение расчета"],
+        "fallbacks": [],
+    },
+    {
+        "id": "sketch",
+        "label": "Выполнение эскизов/предварительное проектирование",
+        "env": "VIP_STAGE_DATE_SKETCH",
+        "candidates": ["дата выполнения эскизов", "предварительного проектирования", "эскиз"],
+        "fallbacks": [],
+    },
+    {
+        "id": "approval",
+        "label": "Согласование с заказчиком",
+        "env": "VIP_STAGE_DATE_APPROVAL",
+        "candidates": ["дата согласования с заказчиком", "согласование с заказчиком"],
+        "fallbacks": [],
+    },
+    {
+        "id": "materials",
+        "label": "Заказ материалов",
+        "env": "VIP_STAGE_DATE_MATERIALS",
+        "candidates": ["дата заказа материалов", "заказ материалов"],
+        "fallbacks": [],
+    },
+    {
+        "id": "production",
+        "label": "Изготовление на производстве",
+        "env": "VIP_STAGE_DATE_PRODUCTION",
+        "candidates": ["дата изготовления на производстве", "изготовление на производстве"],
+        "fallbacks": [],
+    },
+    {
+        "id": "installation",
+        "label": "Монтаж",
+        "env": "VIP_STAGE_DATE_INSTALLATION",
+        "candidates": ["дата монтажа", "монтаж"],
+        "fallbacks": [],
+    },
+]
+
 
 class AppConfigurationError(RuntimeError):
     pass
@@ -339,6 +398,22 @@ def build_columns(fields: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     return columns
 
 
+def build_stage_date_fields(fields: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    stage_date_fields = []
+    for definition in STAGE_DATE_DEFINITIONS:
+        field_key = select_field(fields, definition)
+        meta = fields.get(field_key or "", {})
+        stage_date_fields.append(
+            {
+                "id": definition["id"],
+                "label": definition["label"],
+                "field": field_key,
+                "sourceLabel": meta.get("title") or field_key or "",
+            }
+        )
+    return stage_date_fields
+
+
 def enum_map(meta: dict[str, Any]) -> dict[str, str]:
     values: dict[str, str] = {}
     for item in meta.get("items") or []:
@@ -347,6 +422,63 @@ def enum_map(meta: dict[str, Any]) -> dict[str, str]:
         if item_id is not None and item_value:
             values[str(item_id)] = str(item_value)
     return values
+
+
+def enum_items(meta: dict[str, Any]) -> list[dict[str, str]]:
+    values = []
+    for item in meta.get("items") or []:
+        item_id = item.get("ID") or item.get("id")
+        item_value = item.get("VALUE") or item.get("value") or item.get("NAME") or item.get("name")
+        if item_id is not None and item_value:
+            values.append({"id": str(item_id), "label": str(item_value)})
+    return values
+
+
+def sort_stage_date_fields(
+    stage_date_fields: list[dict[str, Any]],
+    calculation_stage_meta: dict[str, Any],
+) -> list[dict[str, Any]]:
+    indexed: list[tuple[int, int, dict[str, Any]]] = []
+    used_ids: set[str] = set()
+    enum_stages = enum_items(calculation_stage_meta)
+
+    for enum_index, enum_stage in enumerate(enum_stages):
+        enum_label = normalized(enum_stage["label"])
+        for definition_index, field in enumerate(stage_date_fields):
+            if field["id"] in used_ids:
+                continue
+            if enum_label == normalized(field["label"]):
+                indexed.append((enum_index, definition_index, {**field, "stageValue": enum_stage["id"]}))
+                used_ids.add(field["id"])
+                break
+
+    for definition_index, field in enumerate(stage_date_fields):
+        if field["id"] not in used_ids:
+            indexed.append((len(enum_stages) + definition_index, definition_index, field))
+
+    return [field for _, _, field in sorted(indexed, key=lambda item: (item[0], item[1]))]
+
+
+def stage_index_for_item(
+    stage_date_fields: list[dict[str, Any]],
+    calculation_stage_raw: Any,
+    calculation_stage_label: str,
+) -> int | None:
+    raw_values = calculation_stage_raw if isinstance(calculation_stage_raw, list) else [calculation_stage_raw]
+    raw_ids = {str(value) for value in raw_values if value not in (None, "")}
+    label = normalized(calculation_stage_label)
+
+    for index, field in enumerate(stage_date_fields):
+        if field.get("stageValue") and str(field["stageValue"]) in raw_ids:
+            return index
+        if label and normalized(field["label"]) == label:
+            return index
+
+    return None
+
+
+def has_value(value: Any) -> bool:
+    return value not in (None, "", [])
 
 
 def stage_category_ids_from_items(items: list[dict[str, Any]]) -> set[int]:
@@ -478,6 +610,19 @@ def format_datetime(value: Any) -> str:
     return parsed.astimezone().strftime("%d.%m.%Y %H:%M")
 
 
+def format_date(value: Any) -> str:
+    if not value:
+        return ""
+    text = str(value)
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone()
+    return parsed.strftime("%d.%m.%Y")
+
+
 def iso_datetime(value: Any) -> str:
     if not value:
         return ""
@@ -563,6 +708,9 @@ def display_value(client: BitrixClient, value: Any, meta: dict[str, Any], field_
     if field_type == "datetime":
         return format_datetime(value)
 
+    if field_type == "date":
+        return format_date(value)
+
     if isinstance(value, list):
         return ", ".join(display_scalar(item) for item in value if item not in (None, ""))
 
@@ -570,6 +718,43 @@ def display_value(client: BitrixClient, value: Any, meta: dict[str, Any], field_
         return client.user_name(value)
 
     return display_scalar(value)
+
+
+def build_item_stage_dates(
+    item: dict[str, Any],
+    fields: dict[str, dict[str, Any]],
+    stage_date_fields: list[dict[str, Any]],
+    calculation_stage_raw: Any,
+    calculation_stage_label: str,
+) -> list[dict[str, Any]]:
+    current_index = stage_index_for_item(stage_date_fields, calculation_stage_raw, calculation_stage_label)
+    result = []
+
+    for index, stage_field in enumerate(stage_date_fields):
+        field_key = stage_field.get("field")
+        meta = fields.get(field_key or "", {})
+        raw_value = item.get(field_key) if field_key else ""
+        field_type = str(meta.get("type") or "").lower()
+        date_label = format_date(raw_value) if field_type == "date" else format_datetime(raw_value)
+        completed_by_date = has_value(raw_value)
+        completed_by_stage = current_index is not None and current_index > index
+        is_current = current_index == index
+
+        result.append(
+            {
+                "id": stage_field["id"],
+                "label": stage_field["label"],
+                "field": field_key,
+                "sourceLabel": stage_field.get("sourceLabel", ""),
+                "date": iso_datetime(raw_value),
+                "dateLabel": date_label,
+                "completed": completed_by_date or completed_by_stage,
+                "completedByDate": completed_by_date,
+                "current": is_current,
+            }
+        )
+
+    return result
 
 
 def item_url(portal_url: str, entity_type_id: int, item: dict[str, Any]) -> str:
@@ -599,6 +784,9 @@ def build_payload() -> dict[str, Any]:
     entity_type_id = client.discover_entity_type_id()
     fields = client.get_fields(entity_type_id)
     columns = build_columns(fields)
+    calculation_stage_field = next((column.get("field") for column in columns if column["id"] == "calculationStage"), None)
+    calculation_stage_meta = fields.get(calculation_stage_field or "", {})
+    stage_date_fields = sort_stage_date_fields(build_stage_date_fields(fields), calculation_stage_meta)
     all_bitrix_items = client.list_items(entity_type_id)
     stage_name_by_id = stage_labels(client, entity_type_id, fields, all_bitrix_items)
     work_stage_ids = resolve_work_stage_ids(stage_name_by_id)
@@ -653,6 +841,7 @@ def build_payload() -> dict[str, Any]:
 
         updated_raw = item.get("updatedTime") or item.get("createdTime")
         calculation_stage = values.get("calculationStage", "")
+        calculation_stage_raw = raw_values.get("calculationStage")
         process_stage_id = str(item.get("stageId") or "").strip()
         is_completed = item_matches_stage_ids(item, completed_stage_ids)
         completed_until = completed_visible_until(item) if is_completed else None
@@ -672,6 +861,13 @@ def build_payload() -> dict[str, Any]:
                 "statusTone": status_tone(calculation_stage),
                 "values": values,
                 "rawValues": raw_values,
+                "stageDates": build_item_stage_dates(
+                    item,
+                    fields,
+                    stage_date_fields,
+                    calculation_stage_raw,
+                    calculation_stage,
+                ),
             }
         )
 
@@ -681,6 +877,7 @@ def build_payload() -> dict[str, Any]:
         entity_type_id=entity_type_id,
         portal_url=client.portal_url,
         fields=fields,
+        stage_date_fields=stage_date_fields,
         warning=stage_filter_warning,
         demo=False,
         stage_filter={
@@ -704,6 +901,7 @@ def response_payload(
     warning: str,
     demo: bool,
     stage_filter: dict[str, Any] | None = None,
+    stage_date_fields: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     stage_counter = Counter(item["values"].get("calculationStage") or "Без стадии" for item in items)
     responsible_counter = Counter(item["values"].get("responsible") or "Без ответственного" for item in items)
@@ -730,6 +928,10 @@ def response_payload(
         },
         "diagnostics": {
             "mappedFields": {column["id"]: column.get("field") for column in columns},
+            "stageDateFields": {
+                field["id"]: field.get("field")
+                for field in stage_date_fields or []
+            },
             "fieldTitles": {key: value.get("title") for key, value in fields.items() if key in {c.get("field") for c in columns}},
             "stageFilter": stage_filter or {},
         },
@@ -753,10 +955,15 @@ def demo_payload(warning: str) -> dict[str, Any]:
         "subject": {"title": "Предмет", "type": "string"},
         "calculationStage": {"title": "Стадия расчета", "type": "string"},
     }
+    for definition in STAGE_DATE_DEFINITIONS:
+        fields[definition["id"]] = {"title": definition["label"], "type": "date"}
+
     columns = [
         {"id": key, "label": meta["title"], "field": key, "sourceLabel": meta["title"]}
         for key, meta in fields.items()
+        if key in {"project", "responsible", "customer", "subject", "calculationStage"}
     ]
+    stage_date_fields = build_stage_date_fields(fields)
     now = datetime.now(timezone.utc).isoformat()
     rows = [
         ("1017-2025", "Лукьянцева М.А.", "Нагасова Н.", "Замена уплотнителя", "Заказ материалов"),
@@ -766,6 +973,13 @@ def demo_payload(warning: str) -> dict[str, Any]:
     items = []
     for index, row in enumerate(rows, start=1):
         values = dict(zip([column["id"] for column in columns], row, strict=True))
+        current_stage_index = stage_index_for_item(stage_date_fields, values["calculationStage"], values["calculationStage"])
+        item_stage_date_values = {}
+        for stage_index, stage_field in enumerate(stage_date_fields):
+            if current_stage_index is not None and stage_index < current_stage_index:
+                item_stage_date_values[stage_field["field"]] = (
+                    datetime.now(timezone.utc) - timedelta(days=current_stage_index - stage_index + index)
+                ).isoformat()
         is_completed = index == len(rows)
         completed_until = datetime.now(timezone.utc) + timedelta(days=completed_visible_days())
         items.append(
@@ -784,6 +998,13 @@ def demo_payload(warning: str) -> dict[str, Any]:
                 "statusTone": status_tone(values["calculationStage"]),
                 "values": values,
                 "rawValues": values,
+                "stageDates": build_item_stage_dates(
+                    item_stage_date_values,
+                    fields,
+                    stage_date_fields,
+                    values["calculationStage"],
+                    values["calculationStage"],
+                ),
             }
         )
 
@@ -806,6 +1027,7 @@ def demo_payload(warning: str) -> dict[str, Any]:
                 "demo-completed": completed_stage_name(),
             },
         },
+        stage_date_fields=stage_date_fields,
     )
 
 
