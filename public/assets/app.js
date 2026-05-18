@@ -321,6 +321,16 @@ function renderStageTimeline(stageDates) {
   </section>`;
 }
 
+function renderOrderComment(comment) {
+  const text = displayText(comment, "");
+  if (!text) return "";
+
+  return `<section class="detail-card__section">
+    <h3>Комментарий</h3>
+    <div class="detail-comment">${escapeHtml(text).replace(/\r?\n/g, "<br>")}</div>
+  </section>`;
+}
+
 function renderOrderDetail(item) {
   const values = item.values || {};
   const columns = state.payload?.columns || [];
@@ -380,6 +390,8 @@ function renderOrderDetail(item) {
       <h3>Данные заказа</h3>
       <dl class="detail-fields">${detailFields}</dl>
     </section>
+
+    ${renderOrderComment(item.comment)}
 
     ${renderStageTimeline(item.stageDates || [])}
 
