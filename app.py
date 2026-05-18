@@ -662,6 +662,16 @@ def parse_datetime_value(value: Any) -> datetime | None:
     return parsed
 
 
+def date_is_before_today(value: Any) -> bool:
+    parsed = parse_datetime_value(value)
+    if not parsed:
+        return False
+
+    value_date = parsed.astimezone().date()
+    today = datetime.now().astimezone().date()
+    return value_date < today
+
+
 def completed_reference_time(item: dict[str, Any]) -> Any:
     return item.get("movedTime") or item.get("updatedTime") or item.get("createdTime")
 
@@ -751,8 +761,9 @@ def build_item_stage_dates(
         raw_value = item.get(field_key) if field_key else ""
         field_type = str(meta.get("type") or "").lower()
         date_label = format_date(raw_value) if field_type == "date" else format_datetime(raw_value)
-        completed_by_date = has_value(raw_value)
-        completed_by_stage = current_index is not None and current_index > index
+        has_date = has_value(raw_value)
+        completed_by_date = has_date and date_is_before_today(raw_value)
+        completed_by_stage = not has_date and current_index is not None and current_index > index
         is_current = current_index == index
 
         result.append(
@@ -765,6 +776,7 @@ def build_item_stage_dates(
                 "dateLabel": date_label,
                 "completed": completed_by_date or completed_by_stage,
                 "completedByDate": completed_by_date,
+                "dateBlocksCompletion": has_date and not completed_by_date,
                 "current": is_current,
             }
         )
