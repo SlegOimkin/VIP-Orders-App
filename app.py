@@ -29,7 +29,7 @@ DEFAULT_PROCESS_TITLE = "Реестр VIP-заказов"
 DEFAULT_WORK_STAGE_NAME = "В работе"
 DEFAULT_WORK_STAGE_IDS = {"DT1158_153:NEW"}
 DEFAULT_COMPLETED_STAGE_NAME = "Завершенные"
-DEFAULT_COMPLETED_STAGE_IDS = {"DT1158_153:PREPARATION"}
+DEFAULT_COMPLETED_STAGE_IDS = {"DT1158_153:SUCCESS", "SUCCESS"}
 DEFAULT_COMPLETED_VISIBLE_DAYS = 7
 
 COLUMN_DEFINITIONS = [
@@ -203,8 +203,11 @@ def configured_work_stage_ids() -> set[str]:
 def configured_completed_stage_ids() -> set[str]:
     raw_value = os.getenv("BITRIX_COMPLETED_STAGE_IDS", "").strip()
     if not raw_value:
-        return DEFAULT_COMPLETED_STAGE_IDS
-    return {part.strip() for part in re.split(r"[,;]", raw_value) if part.strip()}
+        return set()
+    configured = {part.strip() for part in re.split(r"[,;]", raw_value) if part.strip()}
+    if any(stage_id == "PREPARATION" or stage_id.endswith(":PREPARATION") for stage_id in configured):
+        return configured | DEFAULT_COMPLETED_STAGE_IDS
+    return configured
 
 
 def require_basic_auth() -> Response | None:
@@ -580,7 +583,11 @@ def resolve_completed_stage_ids(labels: dict[str, str]) -> set[str]:
     if configured:
         return expanded_stage_ids(configured)
 
-    return stage_ids_by_name(labels, completed_stage_name())
+    by_name = stage_ids_by_name(labels, completed_stage_name())
+    if by_name:
+        return by_name | expanded_stage_ids(DEFAULT_COMPLETED_STAGE_IDS)
+
+    return expanded_stage_ids(DEFAULT_COMPLETED_STAGE_IDS)
 
 
 def stage_ids_by_name(labels: dict[str, str], target: str) -> set[str]:
