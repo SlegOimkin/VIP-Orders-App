@@ -12,6 +12,7 @@ const state = {
 
 const els = {
   refreshButton: document.querySelector("#refreshButton"),
+  exportExcelButton: document.querySelector("#exportExcelButton"),
   searchInput: document.querySelector("#searchInput"),
   responsibleFilter: document.querySelector("#responsibleFilter"),
   stageFilter: document.querySelector("#stageFilter"),
@@ -100,6 +101,11 @@ function isInteractiveTarget(target) {
 function setLoading(isLoading) {
   els.loading.hidden = !isLoading;
   els.refreshButton.disabled = isLoading;
+  if (isLoading) {
+    els.exportExcelButton.disabled = true;
+  } else {
+    renderExportButton();
+  }
 }
 
 async function loadOrders({ refresh = false } = {}) {
@@ -196,6 +202,7 @@ function renderRows() {
   els.resultCount.textContent = pluralOrders(items.length);
   els.activeFilters.textContent = activeFilterText();
   renderFilterButton();
+  renderExportButton(items);
 
   if (!items.length) {
     els.tableWrap.hidden = true;
@@ -211,6 +218,14 @@ function renderRows() {
   els.cards.hidden = false;
   els.ordersBody.innerHTML = items.map(renderTableRow).join("");
   els.cards.innerHTML = items.map(renderCard).join("");
+}
+
+function renderExportButton(items = filteredItems()) {
+  const unfinishedCount = items.filter((item) => !item.isCompleted).length;
+  els.exportExcelButton.disabled = !unfinishedCount || !state.payload;
+  els.exportExcelButton.title = unfinishedCount
+    ? `Скачать сводку: ${pluralOrders(unfinishedCount)}`
+    : "Нет незавершенных заказов для сводки";
 }
 
 function activeFilterText() {
@@ -329,6 +344,116 @@ function renderOrderComment(comment) {
     <h3>Комментарий</h3>
     <div class="detail-comment">${escapeHtml(text).replace(/\r?\n/g, "<br>")}</div>
   </section>`;
+}
+
+function excelCell(value) {
+  return escapeHtml(String(value ?? "")).replace(/\r?\n/g, "<br>");
+}
+
+function excelDateStamp(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function collectStageLabels(items) {
+  const labels = [];
+  const seen = new Set();
+  items.forEach((item) => {
+    (item.stageDates || []).forEach((stage) => {
+      const label = stage.label || "";
+      if (!label || seen.has(label)) return;
+      seen.add(label);
+      labels.push(label);
+    });
+  });
+  return labels;
+}
+
+function stageSummary(stage) {
+  if (!stage) return "";
+  const parts = [];
+  if (stage.completed) parts.push("Завершено");
+  else if (stage.current) parts.push("Текущий этап");
+  else parts.push("Ожидает");
+  if (stage.dateLabel) parts.push(stage.dateLabel);
+  return parts.join(" · ");
+}
+
+function buildExcelHtml(items) {
+  const generatedAt = formatGeneratedAt(state.payload?.generatedAt || new Date().toISOString());
+  const stageLabels = collectStageLabels(items);
+  const baseHeaders = [
+    "№",
+    "Проект",
+    "Заказчик",
+    "Ответственный",
+    "Предмет",
+    "Стадия расчета",
+    "Комментарий",
+    "Обновлено",
+  ];
+  const headers = [...baseHeaders, ...stageLabels];
+  const rows = items.map((item, index) => {
+    const values = item.values || {};
+    const stagesByLabel = new Map((item.stageDates || []).map((stage) => [stage.label, stage]));
+    const cells = [
+      index + 1,
+      values.project || "Без проекта",
+      values.customer || "",
+      values.responsible || "",
+      values.subject || "",
+      values.calculationStage || "",
+      item.comment || "",
+      item.updatedLabel || "",
+      ...stageLabels.map((label) => stageSummary(stagesByLabel.get(label))),
+    ];
+    return `<tr>${cells.map((cell) => `<td>${excelCell(cell)}</td>`).join("")}</tr>`;
+  });
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font-family: Arial, sans-serif; color: #222322; }
+      table { border-collapse: collapse; width: 100%; }
+      th { background: #484643; color: #ffffff; font-weight: 700; text-align: left; }
+      th, td { border: 1px solid #bfc4c7; padding: 8px 10px; vertical-align: top; mso-number-format: "\\@"; }
+      .title { background: #252525; color: #ffffff; font-size: 18px; font-weight: 700; }
+      .meta { background: #eef0f1; color: #676a68; font-weight: 700; }
+      .accent { background: #e94141; height: 4px; padding: 0; }
+    </style>
+  </head>
+  <body>
+    <table>
+      <tr><td class="title" colspan="${headers.length}">Сводка по незавершенным VIP-заказам</td></tr>
+      <tr><td class="meta" colspan="${headers.length}">Сформировано: ${excelCell(generatedAt)} · ${pluralOrders(items.length)}</td></tr>
+      <tr><td class="accent" colspan="${headers.length}"></td></tr>
+      <tr>${headers.map((header) => `<th>${excelCell(header)}</th>`).join("")}</tr>
+      ${rows.join("")}
+    </table>
+  </body>
+</html>`;
+}
+
+function downloadExcelSummary() {
+  const items = filteredItems().filter((item) => !item.isCompleted);
+  if (!items.length) {
+    showNotice("Нет незавершенных заказов для сводки.", true);
+    return;
+  }
+
+  const html = buildExcelHtml(items);
+  const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `vip-orders-unfinished-${excelDateStamp()}.xls`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showNotice(`Сводка Excel сформирована: ${pluralOrders(items.length)}.`);
 }
 
 function renderOrderDetail(item) {
@@ -516,6 +641,7 @@ function toggleFilter() {
 
 function bindEvents() {
   els.refreshButton.addEventListener("click", () => loadOrders({ refresh: true }));
+  els.exportExcelButton.addEventListener("click", downloadExcelSummary);
   els.searchInput.addEventListener("input", (event) => {
     state.query = event.target.value;
     renderRows();

@@ -350,6 +350,13 @@ h1 {
   font-size: 14px;
 }
 
+.table-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .text-button {
   min-height: 40px;
   padding: 0 16px;
@@ -371,6 +378,28 @@ h1 {
 .text-button--solid:hover {
   background: #536ca1;
   border-color: transparent;
+}
+
+.export-button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.export-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .loading {
@@ -1346,6 +1375,10 @@ select:focus {
   .table-topline span {
     display: block;
     margin: 4px 0 0;
+  }
+
+  .table-actions {
+    display: none;
   }
 
   .table-wrap {
