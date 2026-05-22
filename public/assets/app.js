@@ -369,45 +369,56 @@ function collectStageLabels(items) {
   return labels;
 }
 
-function stageSummary(stage) {
-  if (!stage) return "";
-  const parts = [];
-  if (stage.completed) parts.push("Завершено");
-  else if (stage.current) parts.push("Текущий этап");
-  else parts.push("Ожидает");
-  if (stage.dateLabel) parts.push(stage.dateLabel);
-  return parts.join(" · ");
+const stageExportLabels = {
+  "Поступила задача": "Поступило",
+  "Замер": "Замер",
+  "Выполнение расчета": "расчет",
+  "Выполнение эскизов/предварительное проектирование": "Проектирование",
+  "Согласование с заказчиком": "соглас. с зак.",
+  "Заказ материалов": "Закупка",
+  "Изготовление на производстве": "Производство",
+  "Монтаж": "Монтаж",
+};
+
+function exportStageLabel(label) {
+  return stageExportLabels[label] || label;
+}
+
+function excelStageCell(stage) {
+  if (!stage) return { value: "", className: "col-stage" };
+  const stateClass = stage.completed ? "stage-done" : stage.current ? "stage-current" : "";
+  return { value: stage.dateLabel || "", className: ["col-stage", stateClass].filter(Boolean).join(" ") };
 }
 
 function buildExcelHtml(items) {
   const generatedAt = formatGeneratedAt(state.payload?.generatedAt || new Date().toISOString());
   const stageLabels = collectStageLabels(items);
-  const baseHeaders = [
-    "№",
-    "Проект",
-    "Заказчик",
-    "Ответственный",
-    "Предмет",
-    "Стадия расчета",
-    "Комментарий",
-    "Обновлено",
+  const baseColumns = [
+    { label: "Проект", className: "col-project", width: 96 },
+    { label: "Заказчик", className: "col-customer", width: 150 },
+    { label: "Ответственный", className: "col-responsible", width: 138 },
+    { label: "Предмет", className: "col-subject", width: 118 },
+    { label: "Стадия расчета", className: "col-calc-stage", width: 92 },
+    { label: "Комментарий", className: "col-comment", width: 220 },
   ];
-  const headers = [...baseHeaders, ...stageLabels];
-  const rows = items.map((item, index) => {
+  const columns = [
+    ...baseColumns,
+    ...stageLabels.map((label) => ({ label: exportStageLabel(label), className: "col-stage", width: 82 })),
+  ];
+  const colgroup = columns.map((column) => `<col style="width:${column.width}px">`).join("");
+  const rows = items.map((item) => {
     const values = item.values || {};
     const stagesByLabel = new Map((item.stageDates || []).map((stage) => [stage.label, stage]));
     const cells = [
-      index + 1,
-      values.project || "Без проекта",
-      values.customer || "",
-      values.responsible || "",
-      values.subject || "",
-      values.calculationStage || "",
-      item.comment || "",
-      item.updatedLabel || "",
-      ...stageLabels.map((label) => stageSummary(stagesByLabel.get(label))),
+      { value: values.project || "Без проекта", className: "col-project" },
+      { value: values.customer || "", className: "col-customer" },
+      { value: values.responsible || "", className: "col-responsible" },
+      { value: values.subject || "", className: "col-subject" },
+      { value: values.calculationStage || "", className: "col-calc-stage" },
+      { value: item.comment || "", className: "col-comment" },
+      ...stageLabels.map((label) => excelStageCell(stagesByLabel.get(label))),
     ];
-    return `<tr>${cells.map((cell) => `<td>${excelCell(cell)}</td>`).join("")}</tr>`;
+    return `<tr>${cells.map((cell) => `<td class="${cell.className}">${excelCell(cell.value)}</td>`).join("")}</tr>`;
   });
 
   return `<!doctype html>
@@ -418,7 +429,11 @@ function buildExcelHtml(items) {
       body { font-family: Arial, sans-serif; color: #222322; }
       table { border-collapse: collapse; width: 100%; }
       th { background: #484643; color: #ffffff; font-weight: 700; text-align: left; }
-      th, td { border: 1px solid #bfc4c7; padding: 8px 10px; vertical-align: top; mso-number-format: "\\@"; }
+      th, td { border: 1px solid #bfc4c7; padding: 6px 8px; vertical-align: top; mso-number-format: "\\@"; white-space: normal; }
+      .col-subject, .col-calc-stage { font-size: 11px; }
+      .col-stage { text-align: center; font-size: 11px; }
+      .stage-done { background: #dcefe7; color: #1f664f; font-weight: 700; }
+      .stage-current { background: #fff0d5; color: #7b510f; font-weight: 700; }
       .title { background: #252525; color: #ffffff; font-size: 18px; font-weight: 700; }
       .meta { background: #eef0f1; color: #676a68; font-weight: 700; }
       .accent { background: #e94141; height: 4px; padding: 0; }
@@ -426,10 +441,11 @@ function buildExcelHtml(items) {
   </head>
   <body>
     <table>
-      <tr><td class="title" colspan="${headers.length}">Сводка по незавершенным VIP-заказам</td></tr>
-      <tr><td class="meta" colspan="${headers.length}">Сформировано: ${excelCell(generatedAt)} · ${pluralOrders(items.length)}</td></tr>
-      <tr><td class="accent" colspan="${headers.length}"></td></tr>
-      <tr>${headers.map((header) => `<th>${excelCell(header)}</th>`).join("")}</tr>
+      <colgroup>${colgroup}</colgroup>
+      <tr><td class="title" colspan="${columns.length}">Сводка по незавершенным VIP-заказам</td></tr>
+      <tr><td class="meta" colspan="${columns.length}">Сформировано: ${excelCell(generatedAt)} · ${pluralOrders(items.length)}</td></tr>
+      <tr><td class="accent" colspan="${columns.length}"></td></tr>
+      <tr>${columns.map((column) => `<th class="${column.className}">${excelCell(column.label)}</th>`).join("")}</tr>
       ${rows.join("")}
     </table>
   </body>
