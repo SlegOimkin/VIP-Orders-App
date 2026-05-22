@@ -385,9 +385,22 @@ function exportStageLabel(label) {
 }
 
 function excelStageCell(stage) {
-  if (!stage) return { value: "", className: "col-stage" };
-  const stateClass = stage.completed ? "stage-done" : stage.current ? "stage-current" : "";
-  return { value: stage.dateLabel || "", className: ["col-stage", stateClass].filter(Boolean).join(" ") };
+  if (!stage) return { value: "", className: "col-stage", attributes: "" };
+  if (stage.completed) {
+    return {
+      value: stage.dateLabel || "",
+      className: "col-stage stage-done",
+      attributes: 'style="background-color:#dcefe7;color:#1f664f;font-weight:700;" bgcolor="#dcefe7"',
+    };
+  }
+  if (stage.current) {
+    return {
+      value: stage.dateLabel || "",
+      className: "col-stage stage-current",
+      attributes: 'style="background-color:#fff0d5;color:#7b510f;font-weight:700;" bgcolor="#fff0d5"',
+    };
+  }
+  return { value: stage.dateLabel || "", className: "col-stage", attributes: "" };
 }
 
 function buildExcelHtml(items) {
@@ -418,7 +431,7 @@ function buildExcelHtml(items) {
       { value: item.comment || "", className: "col-comment" },
       ...stageLabels.map((label) => excelStageCell(stagesByLabel.get(label))),
     ];
-    return `<tr>${cells.map((cell) => `<td class="${cell.className}">${excelCell(cell.value)}</td>`).join("")}</tr>`;
+    return `<tr>${cells.map((cell) => `<td class="${cell.className}" ${cell.attributes || ""}>${excelCell(cell.value)}</td>`).join("")}</tr>`;
   });
 
   return `<!doctype html>
