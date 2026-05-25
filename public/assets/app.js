@@ -372,9 +372,9 @@ function collectStageLabels(items) {
 const stageExportLabels = {
   "Поступила задача": "Поступило",
   "Замер": "Замер",
-  "Выполнение расчета": "расчет",
+  "Выполнение расчета": "Расчет",
   "Выполнение эскизов/предварительное проектирование": "Проектирование",
-  "Согласование с заказчиком": "соглас. с зак.",
+  "Согласование с заказчиком": "Соглас. с зак.",
   "Заказ материалов": "Закупка",
   "Изготовление на производстве": "Производство",
   "Монтаж": "Монтаж",
@@ -385,22 +385,24 @@ function exportStageLabel(label) {
 }
 
 function excelStageCell(stage) {
-  if (!stage) return { value: "", className: "col-stage", attributes: "" };
-  if (stage.completed) {
-    return {
-      value: stage.dateLabel || "",
-      className: "col-stage stage-done",
-      attributes: 'style="background-color:#dcefe7;color:#1f664f;font-weight:700;" bgcolor="#dcefe7"',
-    };
-  }
+  if (!stage) return { value: "", className: "col-stage", style: "", bgcolor: "" };
   if (stage.current) {
     return {
       value: stage.dateLabel || "",
       className: "col-stage stage-current",
-      attributes: 'style="background-color:#fff0d5;color:#7b510f;font-weight:700;" bgcolor="#fff0d5"',
+      style: "background-color:#fff0d5;color:#7b510f;font-weight:700;",
+      bgcolor: "#fff0d5",
     };
   }
-  return { value: stage.dateLabel || "", className: "col-stage", attributes: "" };
+  if (stage.completed) {
+    return {
+      value: stage.dateLabel || "",
+      className: "col-stage stage-done",
+      style: "background-color:#dcefe7;color:#1f664f;font-weight:700;",
+      bgcolor: "#dcefe7",
+    };
+  }
+  return { value: stage.dateLabel || "", className: "col-stage", style: "", bgcolor: "" };
 }
 
 function buildExcelHtml(items) {
@@ -431,7 +433,13 @@ function buildExcelHtml(items) {
       { value: item.comment || "", className: "col-comment" },
       ...stageLabels.map((label) => excelStageCell(stagesByLabel.get(label))),
     ];
-    return `<tr>${cells.map((cell) => `<td class="${cell.className}" ${cell.attributes || ""}>${excelCell(cell.value)}</td>`).join("")}</tr>`;
+    return `<tr>${cells
+      .map((cell) => {
+        const style = `font-size:11pt;${cell.style || ""}`;
+        const bgcolor = cell.bgcolor ? ` bgcolor="${cell.bgcolor}"` : "";
+        return `<td class="${cell.className}" style="${style}"${bgcolor}>${excelCell(cell.value)}</td>`;
+      })
+      .join("")}</tr>`;
   });
 
   return `<!doctype html>
@@ -439,15 +447,14 @@ function buildExcelHtml(items) {
   <head>
     <meta charset="utf-8">
     <style>
-      body { font-family: Arial, sans-serif; color: #222322; }
-      table { border-collapse: collapse; width: 100%; }
-      th { background: #484643; color: #ffffff; font-weight: 700; text-align: left; }
-      th, td { border: 1px solid #bfc4c7; padding: 6px 8px; vertical-align: top; mso-number-format: "\\@"; white-space: normal; }
-      .col-subject, .col-calc-stage { font-size: 11px; }
-      .col-stage { text-align: center; font-size: 11px; }
+      body { font-family: Arial, sans-serif; color: #222322; font-size: 11pt; }
+      table { border-collapse: collapse; width: 100%; font-size: 11pt; }
+      th { background: #484643; color: #ffffff; font-size: 11pt; font-weight: 700; text-align: left; }
+      th, td { border: 1px solid #bfc4c7; padding: 6px 8px; vertical-align: top; mso-number-format: "\\@"; white-space: normal; font-size: 11pt; }
+      .col-stage { text-align: center; }
       .stage-done { background: #dcefe7; color: #1f664f; font-weight: 700; }
       .stage-current { background: #fff0d5; color: #7b510f; font-weight: 700; }
-      .title { background: #252525; color: #ffffff; font-size: 18px; font-weight: 700; }
+      .title { background: #252525; color: #ffffff; font-size: 11pt; font-weight: 700; }
       .meta { background: #eef0f1; color: #676a68; font-weight: 700; }
       .accent { background: #e94141; height: 4px; padding: 0; }
     </style>
@@ -458,7 +465,9 @@ function buildExcelHtml(items) {
       <tr><td class="title" colspan="${columns.length}">Сводка по незавершенным VIP-заказам</td></tr>
       <tr><td class="meta" colspan="${columns.length}">Сформировано: ${excelCell(generatedAt)} · ${pluralOrders(items.length)}</td></tr>
       <tr><td class="accent" colspan="${columns.length}"></td></tr>
-      <tr>${columns.map((column) => `<th class="${column.className}">${excelCell(column.label)}</th>`).join("")}</tr>
+      <tr>${columns
+        .map((column) => `<th class="${column.className}" style="font-size:11pt;">${excelCell(column.label)}</th>`)
+        .join("")}</tr>
       ${rows.join("")}
     </table>
   </body>
