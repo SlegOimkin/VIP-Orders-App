@@ -414,7 +414,7 @@ function buildExcelHtml(items) {
     { label: "Ответственный", className: "col-responsible", width: 138 },
     { label: "Предмет", className: "col-subject", width: 118 },
     { label: "Стадия расчета", className: "col-calc-stage", width: 92 },
-    { label: "Комментарий", className: "col-comment", width: 220 },
+    { label: "Комментарий", className: "col-comment", width: 120 },
   ];
   const columns = [
     ...baseColumns,
@@ -443,10 +443,31 @@ function buildExcelHtml(items) {
   });
 
   return `<!doctype html>
-<html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
   <head>
     <meta charset="utf-8">
+    <!--[if gte mso 9]>
+    <xml>
+      <x:ExcelWorkbook>
+        <x:ExcelWorksheets>
+          <x:ExcelWorksheet>
+            <x:Name>Сводка</x:Name>
+            <x:WorksheetOptions>
+              <x:FitToPage />
+              <x:PageSetup>
+                <x:Layout x:Orientation="Landscape" />
+                <x:PaperSizeIndex>8</x:PaperSizeIndex>
+                <x:FitWidth>1</x:FitWidth>
+                <x:FitHeight>0</x:FitHeight>
+              </x:PageSetup>
+            </x:WorksheetOptions>
+          </x:ExcelWorksheet>
+        </x:ExcelWorksheets>
+      </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
     <style>
+      @page { size: 420mm 297mm; margin: 10mm 8mm; mso-page-orientation: landscape; }
       body { font-family: Arial, sans-serif; color: #222322; font-size: 11pt; }
       table { border-collapse: collapse; width: 100%; font-size: 11pt; }
       th { background: #484643; color: #ffffff; font-size: 11pt; font-weight: 700; text-align: left; }
