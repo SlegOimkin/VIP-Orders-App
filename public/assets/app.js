@@ -428,7 +428,7 @@ function buildExcelHtml(items) {
     { label: "Заказчик", className: "col-customer", width: 150 },
     { label: "Ответственный", className: "col-responsible", width: 138 },
     { label: "Предмет", className: "col-subject", width: 118 },
-    { label: "Стадия расчета", className: "col-calc-stage", width: 92 },
+    { label: "Стадия расчета", className: "col-calc-stage", width: 128 },
     { label: "Комментарий", className: "col-comment", width: 120 },
   ];
   const columns = [
