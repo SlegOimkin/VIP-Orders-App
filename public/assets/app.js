@@ -373,15 +373,30 @@ const stageExportLabels = {
   "Поступила задача": "Поступило",
   "Замер": "Замер",
   "Выполнение расчета": "Расчет",
-  "Выполнение эскизов/предварительное проектирование": "Проект.",
-  "Согласование с заказчиком": "Соглас.",
+  "Выполнение эскизов/предварительное проектирование": "Проектирование",
+  "Согласование с заказчиком": "Согл. с зак.",
   "Заказ материалов": "Закупка",
-  "Изготовление на производстве": "Произв.",
+  "Изготовление на производстве": "Производство",
   "Монтаж": "Монтаж",
+};
+
+const stageExportWidths = {
+  "Поступила задача": 98,
+  "Замер": 90,
+  "Выполнение расчета": 94,
+  "Выполнение эскизов/предварительное проектирование": 148,
+  "Согласование с заказчиком": 128,
+  "Заказ материалов": 96,
+  "Изготовление на производстве": 140,
+  "Монтаж": 90,
 };
 
 function exportStageLabel(label) {
   return stageExportLabels[label] || label;
+}
+
+function exportStageWidth(label) {
+  return stageExportWidths[label] || 100;
 }
 
 function excelStageCell(stage) {
@@ -418,7 +433,7 @@ function buildExcelHtml(items) {
   ];
   const columns = [
     ...baseColumns,
-    ...stageLabels.map((label) => ({ label: exportStageLabel(label), className: "col-stage", width: 90 })),
+    ...stageLabels.map((label) => ({ label: exportStageLabel(label), className: "col-stage", width: exportStageWidth(label) })),
   ];
   const colgroup = columns.map((column) => `<col width="${column.width}" style="width:${column.width}px">`).join("");
   const rows = items.map((item) => {
