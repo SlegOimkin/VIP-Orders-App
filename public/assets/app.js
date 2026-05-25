@@ -373,10 +373,10 @@ const stageExportLabels = {
   "Поступила задача": "Поступило",
   "Замер": "Замер",
   "Выполнение расчета": "Расчет",
-  "Выполнение эскизов/предварительное проектирование": "Проектирование",
-  "Согласование с заказчиком": "Соглас. с зак.",
+  "Выполнение эскизов/предварительное проектирование": "Проект.",
+  "Согласование с заказчиком": "Соглас.",
   "Заказ материалов": "Закупка",
-  "Изготовление на производстве": "Производство",
+  "Изготовление на производстве": "Произв.",
   "Монтаж": "Монтаж",
 };
 
@@ -418,9 +418,9 @@ function buildExcelHtml(items) {
   ];
   const columns = [
     ...baseColumns,
-    ...stageLabels.map((label) => ({ label: exportStageLabel(label), className: "col-stage", width: 82 })),
+    ...stageLabels.map((label) => ({ label: exportStageLabel(label), className: "col-stage", width: 90 })),
   ];
-  const colgroup = columns.map((column) => `<col style="width:${column.width}px">`).join("");
+  const colgroup = columns.map((column) => `<col width="${column.width}" style="width:${column.width}px">`).join("");
   const rows = items.map((item) => {
     const values = item.values || {};
     const stagesByLabel = new Map((item.stageDates || []).map((stage) => [stage.label, stage]));
@@ -434,10 +434,11 @@ function buildExcelHtml(items) {
       ...stageLabels.map((label) => excelStageCell(stagesByLabel.get(label))),
     ];
     return `<tr>${cells
-      .map((cell) => {
-        const style = `font-size:11pt;${cell.style || ""}`;
+      .map((cell, cellIndex) => {
+        const width = columns[cellIndex]?.width || 90;
+        const style = `width:${width}px;font-size:11pt;${cell.style || ""}`;
         const bgcolor = cell.bgcolor ? ` bgcolor="${cell.bgcolor}"` : "";
-        return `<td class="${cell.className}" style="${style}"${bgcolor}>${excelCell(cell.value)}</td>`;
+        return `<td class="${cell.className}" width="${width}" style="${style}"${bgcolor}>${excelCell(cell.value)}</td>`;
       })
       .join("")}</tr>`;
   });
@@ -487,7 +488,7 @@ function buildExcelHtml(items) {
       <tr><td class="meta" colspan="${columns.length}">Сформировано: ${excelCell(generatedAt)} · ${pluralOrders(items.length)}</td></tr>
       <tr><td class="accent" colspan="${columns.length}"></td></tr>
       <tr>${columns
-        .map((column) => `<th class="${column.className}" style="font-size:11pt;white-space:nowrap;mso-wrap-style:none;">${excelCell(column.label)}</th>`)
+        .map((column) => `<th class="${column.className}" width="${column.width}" style="width:${column.width}px;font-size:11pt;white-space:nowrap;mso-wrap-style:none;">${excelCell(column.label)}</th>`)
         .join("")}</tr>
       ${rows.join("")}
     </table>
