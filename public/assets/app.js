@@ -470,7 +470,7 @@ function buildExcelHtml(items) {
       @page { size: 420mm 297mm; margin: 10mm 8mm; mso-page-orientation: landscape; }
       body { font-family: Arial, sans-serif; color: #222322; font-size: 11pt; }
       table { border-collapse: collapse; width: 100%; font-size: 11pt; }
-      th { background: #484643; color: #ffffff; font-size: 11pt; font-weight: 700; text-align: left; }
+      th { background: #484643; color: #ffffff; font-size: 11pt; font-weight: 700; text-align: left; white-space: nowrap; mso-wrap-style: none; }
       th, td { border: 1px solid #bfc4c7; padding: 6px 8px; vertical-align: top; mso-number-format: "\\@"; white-space: normal; font-size: 11pt; }
       .col-stage { text-align: center; }
       .stage-done { background: #dcefe7; color: #1f664f; font-weight: 700; }
@@ -487,7 +487,7 @@ function buildExcelHtml(items) {
       <tr><td class="meta" colspan="${columns.length}">Сформировано: ${excelCell(generatedAt)} · ${pluralOrders(items.length)}</td></tr>
       <tr><td class="accent" colspan="${columns.length}"></td></tr>
       <tr>${columns
-        .map((column) => `<th class="${column.className}" style="font-size:11pt;">${excelCell(column.label)}</th>`)
+        .map((column) => `<th class="${column.className}" style="font-size:11pt;white-space:nowrap;mso-wrap-style:none;">${excelCell(column.label)}</th>`)
         .join("")}</tr>
       ${rows.join("")}
     </table>
